@@ -17,6 +17,9 @@ PLUGIN_SO=$(patsubst %.c,%.so,$(PLUGIN_C))
 
 default: esh $(PLUGIN_SO)
 
+debug: CFLAGS += -DDEBUG -g
+debug: esh
+
 # rules to build plugins 
 plugins/deadline.so: plugins/deadline.c
 	gcc -g -Wall -shared -fPIC -o $@ -IcJSONFiles \
