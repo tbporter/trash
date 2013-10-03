@@ -3,6 +3,11 @@ trash
 
 best shell
 
+Compiling
+=========
+
+Needs flex 2.5.35, without it it generates warnings which are turned into errors through Werror. Install it and make sure libl.so links to libfl.a and lex links to flex.
+
 Notes
 =====
 
