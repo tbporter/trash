@@ -3,5 +3,5 @@
 
 #include "esh-error.h"
 
-#define RetError(X) if (X == -1) { DEBUG_PRINT(("Error on %s\n", "X")); return -1;}
+#define RetError(X) if (X == -1) { DEBUG_PRINT(("Error on " #X "\n")); return -1;}
 #endif
