@@ -29,3 +29,7 @@ void dup2_error() {
 void execvp_error() {
     DEBUG_PRINT(("esh-error.c:execvp_error() not yet implemented\n"));
 }
+
+void waitpid_error() {
+    DEBUG_PRINT(("esh-error.c:waitpid_error() not yet implemented\n"));
+}

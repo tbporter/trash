@@ -1,6 +1,7 @@
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #include <fcntl.h>
 
 #include "debug.h"
@@ -21,9 +22,23 @@ int esh_command_line_run(struct esh_command_line * cline) {
     for (pipeline = list_front(&cline->pipes);pipeline !=
             list_tail(&cline->pipes); pipeline = list_next(pipeline)) {
         /* for each pipeline in command_line */
-        DEBUG_PRINT(("Initilizing pipeline"));
+        DEBUG_PRINT(("Initilizing pipeline\n"));
         RetError(esh_pipeline_init(list_entry(pipeline, struct esh_pipeline, elem)));
+        DEBUG_PRINT(("Executing pipeline\n"));
         RetError(esh_pipeline_run(list_entry(pipeline, struct esh_pipeline, elem)));
+
+        if (!list_entry(pipeline, struct esh_pipeline, elem)->bg_job) {
+            int status;
+            if (waitpid(list_entry(list_back(&list_entry(pipeline, struct
+                                    esh_pipeline, elem)->commands), struct
+                            esh_command, elem)->pid, &status, WUNTRACED) == -1)
+            {
+                DEBUG_PRINT(("Error on waitpid\n"));
+                waitpid_error();
+            }
+            /* Add code to use status to determine if this process group was
+             * stopped or needs to be killed */
+        }
     }
 
     /* Run queue */
@@ -64,7 +79,7 @@ int esh_pipeline_init(struct esh_pipeline * pipeline) {
     if (pipeline->iored_output) {
         /* Bit magic to set the flags for append if it's needed
          * ======== DOESN'T WORK!!!! ======================= */
-        int output_fd = open(pipeline->iored_output, 0x0 ^ (O_APPEND & ~!pipeline->append_to_output));
+        int output_fd = open(pipeline->iored_output, (pipeline->append_to_output ? O_APPEND : 0));
         if (output_fd == -1) {
             open_error();
             return -1;
@@ -91,12 +106,16 @@ int esh_pipeline_run(struct esh_pipeline* pipeline) {
     /* Handle single command case seperate, it gets too nasty later on 
      * using list_back is faster than list_size: O(1) vs O(N)*/
     if (list_back(&pipeline->commands) == command) {
+        DEBUG_PRINT(("Only one command found, short cutting\n"));
         return esh_command_exec(list_entry(command, struct esh_command, elem), 0);
     }
+
+    DEBUG_PRINT(("Multiple commands found, running loop\n"));
     
     /* This will handle the multi command case */
     int pipefd[2];
     
+    DEBUG_PRINT(("Initializing first pipeline\n"));
     if (pipe(pipefd) == -1) {
         DEBUG_PRINT(("Error creating pipe\n"));
         pipe_error();
@@ -195,6 +214,7 @@ int esh_pipeline_run(struct esh_pipeline* pipeline) {
  * Child : dup2, exec
  */
 pid_t esh_command_exec(struct esh_command* command, pid_t pgid) {
+    DEBUG_PRINT(("File descriptors: %d %d\n", command->input_fd, command->output_fd));
     command->pid = fork();
     if (command->pid == -1) {
         DEBUG_PRINT(("Error forking job %s\n", command->argv[0]));
@@ -229,21 +249,12 @@ pid_t esh_command_exec(struct esh_command* command, pid_t pgid) {
          * trying to dup2 itself */
         if (command->input_fd != STDIN_FILENO && dup2(command->input_fd,
                     STDIN_FILENO) == -1) {
+            dup2_error();
             return -1;
         }
         if (command->output_fd != STDOUT_FILENO && dup2(command->output_fd,
                     STDOUT_FILENO) == -1) {
-            return -1;
-        }
-        /* No longer need these open might as well close for cleaniness */
-        if (close(command->input_fd) == -1) {
-            DEBUG_PRINT(("Error after close\n"));
-            close_error();
-            return -1;
-        }
-        if (close(command->output_fd) == -1) {
-            DEBUG_PRINT(("Error after close\n"));
-            close_error();
+            dup2_error();
             return -1;
         }
         

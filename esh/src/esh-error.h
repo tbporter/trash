@@ -8,4 +8,5 @@ void fork_error(void);
 void setpgid_error(void);
 void dup2_error(void);
 void execvp_error(void);
+void waitpid_error(void);
 #endif
