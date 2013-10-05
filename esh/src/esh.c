@@ -5,10 +5,12 @@
  * Virginia Tech.
  */
 #include <stdio.h>
+#include <stddef.h>
 #include <readline/readline.h>
 #include <unistd.h>
 
 #include "esh.h"
+#include "esh-job.h"
 
 static void
 usage(char *progname)
@@ -108,6 +110,8 @@ main(int ac, char *av[])
         }
 
         esh_command_line_print(cline);
+        /* my new code */
+        esh_command_line_run(cline);
         esh_command_line_free(cline);
     }
     return 0;

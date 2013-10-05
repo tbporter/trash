@@ -1,3 +1,4 @@
+#include <stdio.h>
 /*
  * This can be used like:
  *     DEBUG_PRINT(("var1: %d; var2: %d; str: %s\n", var1, var2, str));

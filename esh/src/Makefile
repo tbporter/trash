@@ -8,16 +8,16 @@ LDLIBS=-ll -ldl -lreadline -lcurses
 CFLAGS=-Wall -Werror -Wmissing-prototypes -g -fPIC
 #YFLAGS=-v
 
-LIB_OBJECTS=list.o esh-utils.o esh-sys-utils.o
+LIB_OBJECTS=list.o esh-utils.o esh-sys-utils.o esh-job.o esh-error.o
 OBJECTS=esh.o
-HEADERS=list.h esh.h esh-sys-utils.h
+HEADERS=list.h esh.h esh-sys-utils.h esh-job.h esh-error.h
 PLUGINDIR=plugins
 PLUGIN_C=$(wildcard $(PLUGINDIR)/*.c)
 PLUGIN_SO=$(patsubst %.c,%.so,$(PLUGIN_C))
 
 default: esh $(PLUGIN_SO)
 
-debug: CFLAGS += -DDEBUG -g
+debug: CFLAGS += -DDEBUG
 debug: esh
 
 # rules to build plugins 

@@ -158,6 +158,8 @@ struct esh_command {
                               /* The pipeline of which this job is a part. */
 
     /* Add additional fields here if needed. */
+    int input_fd;
+    int output_fd;
 };
 
 /** ----------------------------------------------------------- */
