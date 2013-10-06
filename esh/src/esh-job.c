@@ -94,7 +94,7 @@ int esh_command_line_run(struct esh_command_line * cline) {
                             esh_command, elem)->pid));
             /* After that ugly debugging statement... */
             jobs.fg_job = list_entry(pipeline, struct esh_pipeline, elem);
-            list_entry(pipeline, struct esh_pipeline, elem)->job_status = FOREGROUND;
+            list_entry(pipeline, struct esh_pipeline, elem)->status = FOREGROUND;
             /* Run queue */
             /* signal_queue_process */
             if (waitpid(list_entry(list_back(&list_entry(pipeline, struct
@@ -111,7 +111,7 @@ int esh_command_line_run(struct esh_command_line * cline) {
         }
         /* If background job */
         else {
-            list_entry(pipeline, struct esh_pipeline, elem)->job_status = BACKGROUND;
+            list_entry(pipeline, struct esh_pipeline, elem)->status = BACKGROUND;
             DEBUG_PRINT(("Setting up backgrounding\n"));
             list_push_back(&jobs.jobs, pipeline);
             /* Run queue */
