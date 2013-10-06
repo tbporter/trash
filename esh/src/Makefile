@@ -8,7 +8,7 @@ LDLIBS=-ll -ldl -lreadline -lcurses
 CFLAGS=-Wall -Werror -Wmissing-prototypes -g -fPIC
 #YFLAGS=-v
 
-LIB_OBJECTS=list.o esh-utils.o esh-sys-utils.o esh-job.o esh-error.o esh-debug.o esh-builtin.o esh-signal.h
+LIB_OBJECTS=list.o esh-utils.o esh-sys-utils.o esh-job.o esh-error.o esh-debug.o esh-builtin.o esh-signal.o
 OBJECTS=esh.o
 HEADERS=list.h esh.h esh-sys-utils.h esh-job.h esh-error.h esh-debug.h esh-builtin.h esh-signal.h
 PLUGINDIR=plugins
