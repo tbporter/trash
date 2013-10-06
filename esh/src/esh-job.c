@@ -12,6 +12,60 @@
 #include "esh-error.h"
 #include "esh-macros.h"
 
+struct esh_jobs jobs;
+
+void esh_jobs_init() {
+    list_init(&jobs.jobs);
+    jobs.current_jid = 0;
+    jobs.fg_job = NULL;
+}
+/* Expose the jobs in here to other files */
+struct list* esh_get_jobs() {
+    return &jobs.jobs;
+}
+
+/* Return pointer to pipeline or NULL */
+struct esh_pipeline* esh_get_job_from_jid(int jid) {
+    struct list_elem* pipeline;
+    for (pipeline = list_front(&jobs.jobs); pipeline !=
+            list_tail(&jobs.jobs); pipeline = list_next(pipeline)) {
+        if (list_entry(pipeline, struct esh_pipeline, elem)->jid == jid) {
+            return list_entry(pipeline, struct esh_pipeline, elem);
+        }
+    }
+    return NULL;
+}
+
+/* Return pointer to pipeline or NULL */
+struct esh_pipeline* esh_get_job_from_pgrp(pid_t pgrp) {
+    struct list_elem* pipeline;
+    for (pipeline = list_front(&jobs.jobs); pipeline !=
+            list_tail(&jobs.jobs); pipeline = list_next(pipeline)) {
+        if (list_entry(pipeline, struct esh_pipeline, elem)->pgrp == pgrp) {
+            return list_entry(pipeline, struct esh_pipeline, elem);
+        }
+    }
+    return NULL;
+}
+
+/* Return pointer to pipeline or NULL */
+struct esh_command* esh_get_cmd_from_pid(pid_t pid) {
+    struct list_elem* pipeline;
+    for (pipeline = list_front(&jobs.jobs); pipeline !=
+            list_tail(&jobs.jobs); pipeline = list_next(pipeline)) {
+        struct list_elem* command;
+        for (command = list_front(&list_entry(pipeline, struct esh_pipeline,
+                        elem)->commands); command !=
+                list_tail(&list_entry(pipeline, struct esh_pipeline,
+                        elem)->commands); list_next(command)) {
+            if (list_entry(command, struct esh_command, elem)->pid == pid) {
+                return list_entry(pipeline, struct esh_command, elem);
+            }
+        }
+    }
+    return NULL;
+}
+
 /*
  * Execute the command line and the pipes
  */
@@ -27,9 +81,8 @@ int esh_command_line_run(struct esh_command_line * cline) {
         RetError(esh_pipeline_init(list_entry(pipeline, struct esh_pipeline, elem)));
         DEBUG_PRINT(("Executing pipeline\n"));
         RetError(esh_pipeline_run(list_entry(pipeline, struct esh_pipeline, elem)));
-        /* Run queue */
-        /*signal_queue_process*/
 
+        /* If foreground job */
         if (!list_entry(pipeline, struct esh_pipeline, elem)->bg_job) {
             int status;
             DEBUG_PRINT(("Waiting on %s %d\n",
@@ -40,6 +93,10 @@ int esh_command_line_run(struct esh_command_line * cline) {
                                     esh_pipeline, elem)->commands), struct
                             esh_command, elem)->pid));
             /* After that ugly debugging statement... */
+            jobs.fg_job = list_entry(pipeline, struct esh_pipeline, elem);
+            list_entry(pipeline, struct esh_pipeline, elem)->job_status = FOREGROUND;
+            /* Run queue */
+            /* signal_queue_process */
             if (waitpid(list_entry(list_back(&list_entry(pipeline, struct
                                     esh_pipeline, elem)->commands), struct
                             esh_command, elem)->pid, &status, WUNTRACED) == -1)
@@ -48,8 +105,18 @@ int esh_command_line_run(struct esh_command_line * cline) {
                 waitpid_error();
             }
             DEBUG_PRINT(("Finished waiting\n"));
-            /* Add code to use status to determine if this process group was
-             * stopped or needs to be killed */
+            /* TODO: Add code to use status to determine if this process group was
+             * stopped or needs to be killed tervis return 1 if it's
+             * backgrounded and 0 if it's not*/
+        }
+        /* If background job */
+        else {
+            list_entry(pipeline, struct esh_pipeline, elem)->job_status = BACKGROUND;
+            DEBUG_PRINT(("Setting up backgrounding\n"));
+            list_push_back(&jobs.jobs, pipeline);
+            /* Run queue */
+            /*signal_queue_process*/
+            return 1;
         }
     }
 
@@ -63,6 +130,16 @@ int esh_command_line_run(struct esh_command_line * cline) {
 int esh_pipeline_init(struct esh_pipeline * pipeline) {
     /* Assume list is in correct state and non-empty (needed to perform
      * list_front) */
+
+    /* Set up jids */
+    if (pipeline->bg_job) {
+        DEBUG_PRINT(("Setting jid to %d\n", jobs.current_jid + 1));
+        pipeline->jid = ++jobs.current_jid;
+    }
+    else {
+        DEBUG_PRINT(("Foreground job, setting jid to -1\n"));
+        pipeline->jid = -1;
+    }
 
     /* IO redirection init */
     DEBUG_PRINT(("Executing pipeline iored code\n"));

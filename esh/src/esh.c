@@ -63,6 +63,10 @@ build_prompt_from_plugins(void)
  */
 struct esh_shell shell =
 {
+    .get_jobs = esh_get_jobs,
+    .get_job_from_jid = esh_get_job_from_jid,
+    .get_job_from_pgrp = esh_get_job_from_pgrp,
+    .get_cmd_from_pid = esh_get_cmd_from_pid,
     .build_prompt = build_prompt_from_plugins,
     .readline = readline,       /* GNU readline(3) */ 
     .parse_command_line = esh_parse_command_line /* Default parser */
@@ -87,6 +91,7 @@ main(int ac, char *av[])
         }
     }
 
+    esh_jobs_init();
     esh_plugin_initialize(&shell);
 
     /* Read/eval loop. */
@@ -114,7 +119,9 @@ main(int ac, char *av[])
         #endif
         /* my new code */
         esh_command_line_run(cline);
-        esh_command_line_free(cline);
+        /* TODO: We need to make new memory management stuff here */
+        free(cline);
+        /*esh_command_line_free(cline);*/
     }
     return 0;
 }
