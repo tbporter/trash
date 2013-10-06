@@ -64,8 +64,6 @@ int esh_pipeline_init(struct esh_pipeline * pipeline) {
     /* Assume list is in correct state and non-empty (needed to perform
      * list_front) */
 
-    /*=========== SHOULD IMPLEMENT CHECK FOR EMPTY PIPELINE */
-
     /* IO redirection init */
     DEBUG_PRINT(("Executing pipeline iored code\n"));
     /* Execute if not NULL */
