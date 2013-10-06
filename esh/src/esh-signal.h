@@ -5,6 +5,6 @@ void esh_signal_init(void);
 void esh_signal_handler_int(int sig);
 void esh_signal_handler_stop(int sig);
 void esh_signal_handler_chld(int sig);
-
+void esh_signal_fg(int sig);
 void esh_signal_kill_pgrp(pid_t pgrp, int sig);
 #endif
