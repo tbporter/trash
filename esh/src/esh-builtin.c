@@ -11,7 +11,10 @@ int esh_builtin(struct esh_pipeline* pipeline) {
 
     /* Fastest way to check if size is 1 */
     if (list_back(&pipeline->commands) == command) {
-        if (return 0;
+        if (!strcmp("cd", list_entry(command, struct esh_command, elem)->argv[0])) {
+            DEBUG_PRINT(("Executing cd\n"));
+            return 1;
+        }
     }
     return 0;
 }
