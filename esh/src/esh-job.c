@@ -77,7 +77,11 @@ int esh_command_line_run(struct esh_command_line * cline) {
     for (pipeline = list_front(&cline->pipes);pipeline !=
             list_tail(&cline->pipes); pipeline = list_next(pipeline)) {
         /* run it if it's a builtin */
-        if (esh_builtin(list_entry(pipeline, struct esh_pipeline, elem))) {
+        int builtin = esh_builtin(list_entry(pipeline, struct esh_pipeline, elem));
+        if (builtin == -1) {
+            return -1;
+        }
+        else if (builtin) {
             /* If this was handled by a builtin carry on but clean up since
              * signals won't do that */
             struct list_elem* new_pipeline = list_prev(pipeline);
@@ -119,7 +123,10 @@ int esh_command_line_run(struct esh_command_line * cline) {
             /* If process is still running, just bg */
             if (WIFSTOPPED(status)) {
                 DEBUG_PRINT(("Process stopped in background\n"));
+                struct list_elem* new_pipeline = list_prev(pipeline);
+                list_remove(pipeline);
                 list_push_back(&jobs.jobs, pipeline);
+                pipeline = new_pipeline;
             }
 
             DEBUG_PRINT(("Finished waiting\n"));
@@ -131,7 +138,10 @@ int esh_command_line_run(struct esh_command_line * cline) {
         else {
             list_entry(pipeline, struct esh_pipeline, elem)->status = BACKGROUND;
             DEBUG_PRINT(("Setting up backgrounding\n"));
+            struct list_elem* new_pipeline = list_prev(pipeline);
+            list_remove(pipeline);
             list_push_back(&jobs.jobs, pipeline);
+            pipeline = new_pipeline;
             /* Run queue */
             /*signal_queue_process*/
         }

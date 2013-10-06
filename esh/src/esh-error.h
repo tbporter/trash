@@ -9,4 +9,5 @@ void setpgid_error(void);
 void dup2_error(void);
 void execvp_error(void);
 void waitpid_error(void);
+void chdir_error(void);
 #endif

@@ -56,3 +56,7 @@ void execvp_error() {
 void waitpid_error() {
     DEBUG_PRINT(("esh-error.c:waitpid_error() not yet implemented\n"));
 }
+
+void chdir_error() {
+    DEBUG_PRINT(("esh-error.c:chdir_error() not yet implemented\n"));
+}
