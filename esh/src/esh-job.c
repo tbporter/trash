@@ -12,8 +12,6 @@
 #include "esh-error.h"
 #include "esh-macros.h"
 
-struct esh_jobs jobs;
-
 void esh_jobs_init() {
     list_init(&jobs.jobs);
     jobs.current_jid = 0;
