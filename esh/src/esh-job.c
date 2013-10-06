@@ -2,9 +2,9 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <fcntl.h>
+#include <stdio.h>
 
-#include "debug.h"
+#include "esh-debug.h"
 #include "list.h"
 
 #include "esh.h"
@@ -16,19 +16,30 @@
  * Execute the command line and the pipes
  */
 int esh_command_line_run(struct esh_command_line * cline) {
-    /* Set up signal queuing */
-    /* using shell or something?*/
+
+    /* Run through each pipeline */
     struct list_elem* pipeline;
     for (pipeline = list_front(&cline->pipes);pipeline !=
             list_tail(&cline->pipes); pipeline = list_next(pipeline)) {
-        /* for each pipeline in command_line */
+
+        /* Set up signal queuing */
         DEBUG_PRINT(("Initilizing pipeline\n"));
         RetError(esh_pipeline_init(list_entry(pipeline, struct esh_pipeline, elem)));
         DEBUG_PRINT(("Executing pipeline\n"));
         RetError(esh_pipeline_run(list_entry(pipeline, struct esh_pipeline, elem)));
+        /* Run queue */
+        /*signal_queue_process*/
 
         if (!list_entry(pipeline, struct esh_pipeline, elem)->bg_job) {
             int status;
+            DEBUG_PRINT(("Waiting on %s %d\n",
+                        list_entry(list_back(&list_entry(pipeline, struct
+                                    esh_pipeline, elem)->commands), struct
+                            esh_command, elem)->argv[0],
+                        list_entry(list_back(&list_entry(pipeline, struct
+                                    esh_pipeline, elem)->commands), struct
+                            esh_command, elem)->pid));
+            /* After that ugly debugging statement... */
             if (waitpid(list_entry(list_back(&list_entry(pipeline, struct
                                     esh_pipeline, elem)->commands), struct
                             esh_command, elem)->pid, &status, WUNTRACED) == -1)
@@ -36,13 +47,12 @@ int esh_command_line_run(struct esh_command_line * cline) {
                 DEBUG_PRINT(("Error on waitpid\n"));
                 waitpid_error();
             }
+            DEBUG_PRINT(("Finished waiting\n"));
             /* Add code to use status to determine if this process group was
              * stopped or needs to be killed */
         }
     }
 
-    /* Run queue */
-    /*signal_queue_process*/
     return 0;
 }
 
@@ -60,7 +70,9 @@ int esh_pipeline_init(struct esh_pipeline * pipeline) {
     DEBUG_PRINT(("Executing pipeline iored code\n"));
     /* Execute if not NULL */
     if (pipeline->iored_input) {
-        int input_fd = open(pipeline->iored_input, 0x0);
+        /* Do we need to free the file pointer here? */
+        int input_fd = fileno(fopen(pipeline->iored_input, "r"));
+        DEBUG_PRINT(("Setting input to be %s\n", pipeline->iored_input));
         if (input_fd == -1) {
             DEBUG_PRINT(("Error opening input file %s\n", pipeline->iored_input));
             /* open_error should switch on errno and print and appropriate
@@ -68,6 +80,7 @@ int esh_pipeline_init(struct esh_pipeline * pipeline) {
             open_error();
             return -1;
         }
+        list_entry(list_front(&pipeline->commands), struct esh_command, elem)->input_fd = input_fd;
     }
     else {
         /* If we set this here we can treat io redirection and
@@ -77,13 +90,13 @@ int esh_pipeline_init(struct esh_pipeline * pipeline) {
 
     /* Again for output, but slightly different*/
     if (pipeline->iored_output) {
-        /* Bit magic to set the flags for append if it's needed
-         * ======== DOESN'T WORK!!!! ======================= */
-        int output_fd = open(pipeline->iored_output, (pipeline->append_to_output ? O_APPEND : 0));
+        DEBUG_PRINT(("Setting output to be %s\n", pipeline->iored_output));
+        int output_fd = fileno(fopen(pipeline->iored_output, (pipeline->append_to_output ? "a" : "w")));
         if (output_fd == -1) {
             open_error();
             return -1;
         }
+        list_entry(list_back(&pipeline->commands), struct esh_command, elem)->output_fd = output_fd;
     }
     else {
         list_entry(list_back(&pipeline->commands), struct esh_command, elem)->output_fd = STDOUT_FILENO;
@@ -107,7 +120,30 @@ int esh_pipeline_run(struct esh_pipeline* pipeline) {
      * using list_back is faster than list_size: O(1) vs O(N)*/
     if (list_back(&pipeline->commands) == command) {
         DEBUG_PRINT(("Only one command found, short cutting\n"));
-        return esh_command_exec(list_entry(command, struct esh_command, elem), 0);
+        RetError(esh_command_exec(list_entry(command, struct esh_command,
+                        elem), 0));
+        /* Close input fd if it's a file */
+        if (pipeline->iored_input) {
+            DEBUG_PRINT(("Closing %d in parent\n", list_entry(command, struct
+                            esh_command, elem)->input_fd));
+            if (close(list_entry(command, struct esh_command, elem)->input_fd)
+                    == -1) {
+                DEBUG_PRINT(("Error after close\n"));
+                close_error();
+                return -1;
+            }
+        }
+        /* Close if it's a file */
+        if (pipeline->iored_output) {
+            DEBUG_PRINT(("Closing %d in parent\n", list_entry(command, struct
+                            esh_command, elem)->output_fd));
+            if (close(list_entry(command, struct esh_command, elem)->output_fd) == -1) {
+                DEBUG_PRINT(("Error after close\n"));
+                close_error();
+                return -1;
+            }
+        }
+        return 0;
     }
 
     DEBUG_PRINT(("Multiple commands found, running loop\n"));
@@ -132,6 +168,7 @@ int esh_pipeline_run(struct esh_pipeline* pipeline) {
 
     /* Close input fd if it's a file */
     if (pipeline->iored_input) {
+        DEBUG_PRINT(("Closing %d in parent\n", list_entry(command, struct esh_command, elem)->input_fd));
         if (close(list_entry(command, struct esh_command, elem)->input_fd) == -1) {
             DEBUG_PRINT(("Error after close\n"));
             close_error();
@@ -179,13 +216,15 @@ int esh_pipeline_run(struct esh_pipeline* pipeline) {
         }
     }
     /* Close the last commands output */
-    if (close(list_entry(command, struct esh_command, elem)->input_fd) == -1) {
+    if (close(list_entry(command, struct esh_command, elem)->output_fd) == -1) {
         DEBUG_PRINT(("Error after close\n"));
         close_error();
         return -1;
     }
     /* This is the last command */
     command = list_next(command);
+
+    list_entry(command, struct esh_command, elem)->input_fd = pipefd[0];
     
     if (esh_command_exec(list_entry(command, struct esh_command, elem), pipeline->pgrp) == -1) {
         return -1;
@@ -210,10 +249,11 @@ int esh_pipeline_run(struct esh_pipeline* pipeline) {
 
 /* 
  * Forking 
- * Parent: close fd, setgpid,
+ * Parent: setgpid,
  * Child : dup2, exec
  */
 pid_t esh_command_exec(struct esh_command* command, pid_t pgid) {
+    DEBUG_PRINT(("About to fork and exec %s\n", command->argv[0]));
     DEBUG_PRINT(("File descriptors: %d %d\n", command->input_fd, command->output_fd));
     command->pid = fork();
     if (command->pid == -1) {
@@ -249,11 +289,14 @@ pid_t esh_command_exec(struct esh_command* command, pid_t pgid) {
          * trying to dup2 itself */
         if (command->input_fd != STDIN_FILENO && dup2(command->input_fd,
                     STDIN_FILENO) == -1) {
+            DEBUG_PRINT(("Error on setting input\n"));
             dup2_error();
             return -1;
         }
+        DEBUG_PRINT(("Setting output\n"));
         if (command->output_fd != STDOUT_FILENO && dup2(command->output_fd,
                     STDOUT_FILENO) == -1) {
+            DEBUG_PRINT(("Error on setting output\n"));
             dup2_error();
             return -1;
         }

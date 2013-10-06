@@ -109,7 +109,9 @@ main(int ac, char *av[])
             continue;
         }
 
+        #ifdef DEBUG
         esh_command_line_print(cline);
+        #endif
         /* my new code */
         esh_command_line_run(cline);
         esh_command_line_free(cline);
