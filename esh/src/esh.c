@@ -11,7 +11,8 @@
 
 #include "esh.h"
 #include "esh-job.h"
-
+#include "esh-signal.h"
+ 
 static void
 usage(char *progname)
 {
@@ -92,6 +93,7 @@ main(int ac, char *av[])
     }
 
     esh_jobs_init();
+    esh_signal_init();
     esh_plugin_initialize(&shell);
 
     /* Read/eval loop. */
