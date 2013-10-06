@@ -11,6 +11,7 @@
 #include "esh-job.h"
 #include "esh-error.h"
 #include "esh-macros.h"
+#include "esh-builtin.h"
 
 struct esh_jobs jobs;
 
@@ -75,6 +76,14 @@ int esh_command_line_run(struct esh_command_line * cline) {
     struct list_elem* pipeline;
     for (pipeline = list_front(&cline->pipes);pipeline !=
             list_tail(&cline->pipes); pipeline = list_next(pipeline)) {
+        /* run it if it's a builtin */
+        if (esh_builtin(list_entry(pipeline, struct esh_pipeline, elem))) {
+            /* If this was handled by a builtin carry on but clean up since
+             * signals won't do that */
+            list_remove(pipeline);
+            esh_pipeline_free(list_entry(pipeline, struct esh_pipeline, elem));
+            continue;
+        }
 
         /* Set up signal queuing */
         DEBUG_PRINT(("Initilizing pipeline\n"));
@@ -96,7 +105,7 @@ int esh_command_line_run(struct esh_command_line * cline) {
             jobs.fg_job = list_entry(pipeline, struct esh_pipeline, elem);
             list_entry(pipeline, struct esh_pipeline, elem)->status = FOREGROUND;
             /* Run queue */
-            /* signal_queue_process */
+            /* TODO: signal_queue_process */
             if (waitpid(list_entry(list_back(&list_entry(pipeline, struct
                                     esh_pipeline, elem)->commands), struct
                             esh_command, elem)->pid, &status, WUNTRACED) == -1)
@@ -104,6 +113,13 @@ int esh_command_line_run(struct esh_command_line * cline) {
                 DEBUG_PRINT(("Error on waitpid\n"));
                 waitpid_error();
             }
+            jobs.fg_job = NULL;
+            /* If process is still running, just bg */
+            if (WIFSTOPPED(status)) {
+                DEBUG_PRINT(("Process stopped in background\n"));
+                list_push_back(&jobs.jobs, pipeline);
+            }
+
             DEBUG_PRINT(("Finished waiting\n"));
             /* TODO: Add code to use status to determine if this process group was
              * stopped or needs to be killed tervis return 1 if it's
@@ -116,7 +132,6 @@ int esh_command_line_run(struct esh_command_line * cline) {
             list_push_back(&jobs.jobs, pipeline);
             /* Run queue */
             /*signal_queue_process*/
-            return 1;
         }
     }
 
