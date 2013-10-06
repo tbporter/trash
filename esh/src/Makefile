@@ -8,9 +8,9 @@ LDLIBS=-ll -ldl -lreadline -lcurses
 CFLAGS=-Wall -Werror -Wmissing-prototypes -g -fPIC
 #YFLAGS=-v
 
-LIB_OBJECTS=list.o esh-utils.o esh-sys-utils.o esh-job.o esh-error.o
+LIB_OBJECTS=list.o esh-utils.o esh-sys-utils.o esh-job.o esh-error.o esh-debug.o
 OBJECTS=esh.o
-HEADERS=list.h esh.h esh-sys-utils.h esh-job.h esh-error.h
+HEADERS=list.h esh.h esh-sys-utils.h esh-job.h esh-error.h esh-debug.h
 PLUGINDIR=plugins
 PLUGIN_C=$(wildcard $(PLUGINDIR)/*.c)
 PLUGIN_SO=$(patsubst %.c,%.so,$(PLUGIN_C))
@@ -48,5 +48,5 @@ libesh.a: $(LIB_OBJECTS)
 	ranlib $@
 
 clean:
-	rm -f $(OBJECTS) $(LIB_OBJECTS) esh esh-grammar.o \
+	rm -f $(OBJECTS) $(LIB_OBJECTS) esh esh-grammar.o esh-debug.o \
 		$(PLUGIN_SO) core.* libesh.a tests/*.pyc
