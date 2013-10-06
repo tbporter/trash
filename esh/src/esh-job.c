@@ -109,6 +109,7 @@ int esh_command_line_run(struct esh_command_line * cline) {
                             esh_command, elem)->pid));
             /* After that ugly debugging statement... */
             jobs.fg_job = list_entry(pipeline, struct esh_pipeline, elem);
+            DEBUG_PRINT(("fg_job->pggrp: %d\n",jobs.fg_job->pgrp));         
             list_entry(pipeline, struct esh_pipeline, elem)->status = FOREGROUND;
             /* Run queue */
             /* TODO: signal_queue_process */
@@ -222,8 +223,9 @@ int esh_pipeline_run(struct esh_pipeline* pipeline) {
      * using list_back is faster than list_size: O(1) vs O(N)*/
     if (list_back(&pipeline->commands) == command) {
         DEBUG_PRINT(("Only one command found, short cutting\n"));
-        RetError(esh_command_exec(list_entry(command, struct esh_command,
-                        elem), 0));
+        pipeline->pgrp =  esh_command_exec(list_entry(command, struct esh_command,
+                        elem), 0);
+        RetError(pipeline->pgrp);
         /* Close input fd if it's a file */
         if (pipeline->iored_input) {
             DEBUG_PRINT(("Closing %d in parent\n", list_entry(command, struct
