@@ -9,4 +9,5 @@ void esh_signal_fg(int sig);
 void esh_signal_kill_pgrp(pid_t pgrp, int sig);
 void esh_signal_kill_pgrp_stop(pid_t pgrp);
 void esh_signal_kill_pgrp_int(pid_t pgrp);
+void esh_signal_kill_pgrp_cont(pid_t pgrp);
 #endif
