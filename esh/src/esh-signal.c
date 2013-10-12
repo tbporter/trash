@@ -33,6 +33,14 @@ void esh_signal_handler_chld(int sig){
 
 }
 
+void esh_signal_kill_pgrp_int(pid_t pgrp){
+	esh_signal_kill_pgrp(pgrp,SIGINT);
+}
+
+void esh_signal_kill_pgrp_stop(pid_t pgrp){
+	esh_signal_kill_pgrp(pgrp,SIGSTOP);
+}
+
 void esh_signal_kill_pgrp(pid_t pgrp, int sig){
 	DEBUG_PRINT(("Killing pgrp: %d with signal: %d\n", pgrp, sig));
 	kill(-1*pgrp,sig);
