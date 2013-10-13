@@ -121,6 +121,10 @@ int esh_command_line_run(struct esh_command_line * cline) {
                 waitpid_error();
                 return -1;
             }
+            /* Lock down our stuff */
+            esh_signal_block(SIGCHLD);
+            DEBUG_PRINT(("Finished waiting!\n"));
+            jobs.fg_job = NULL;
             /* TODO: Remove this when signal handles it */
             if (tcsetpgrp(esh_sys_tty_getfd(), getpgrp()) == -1) {
                 DEBUG_PRINT(("Error on tcsetpgrp\n"));
@@ -128,11 +132,11 @@ int esh_command_line_run(struct esh_command_line * cline) {
                 return -1;
             }
             if (WIFSTOPPED(status)) {
+                /* It's a background job! */
                 esh_sys_tty_save(&pipeline->saved_tty_state);
                 pipeline->bg_job = true;
             }
             esh_sys_tty_restore(tty_state);
-            DEBUG_PRINT(("Finished waiting!\n"));
             DEBUG_PRINT(("Reclaimed terminal\n"));
         }
         /* If background job */
