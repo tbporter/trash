@@ -12,6 +12,7 @@
 #include "esh.h"
 #include "esh-job.h"
 #include "esh-signal.h"
+#include "esh-sys-utils.h"
  
 static void
 usage(char *progname)
