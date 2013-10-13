@@ -5,7 +5,7 @@
 #include "esh-debug.h"
 #include "esh-error.h"
 #include "esh-sys-utils.h"
-
+#include <stdio.h>
 #include <assert.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -41,59 +41,72 @@ void esh_signal_fg(int sig){
 void esh_signal_handler_chld(int sig, siginfo_t* info, void* _ctxt){
 	assert (sig == SIGCHLD);
 
+	//char buf[128];
 	int status;
 	pid_t pid;
-	struct esh_command* cmd;
-
-		//tcsetpgrp() for forground
 
 	//wait on each pid to see what happened
-	write(1,"wait on pid\n",50);
 	while((pid = waitpid(-1,&status, WNOHANG) > 0)){
 		
-		write(1,"waited on pid\n",50);
-		cmd = esh_get_cmd_from_pid(pid);
-		write(1,"got cmd from pid\n",50);
+		struct esh_command* cmd = esh_get_cmd_from_pid(pid);
 
-		if(jobs.fg_job->pgrp == cmd->pipeline->pgrp){
-			write(1,"fg job did something!\n",50);
-			if(WIFEXITED(status) || WIFSTOPPED(status)){
-				write(1,"fg job signal: exit or stopped\n",50);
-				//tcsetpgrp(esh_sys_tty_getfd(),getpgrp());
-				jobs.fg_job = NULL;
-			}
-		}
+		if(jobs.fg_job != NULL && jobs.fg_job->pgrp == cmd->pipeline->pgrp){
+			esh_signal_cleanup_fg(cmd,status);		
+		} else {
+			esh_signal_cleanup(cmd,status);
+		}	
 	
-		//It ended
-		if(WIFSIGNALED(status) || WIFEXITED(status)){
-			cmd->pid = 0;
-			write(1,"job ended\n",50);
-			//DEBUG_PRINT(("killed by signal %d\n", WTERMSIG(status)));
-		} 
-		else if(WIFSTOPPED(status)){
-			cmd->pipeline->status = STOPPED;
-			write(1,"job stopped\n",50);
-			//If it needs terminal
-			int stopsig = WSTOPSIG(status);
-			if(stopsig == SIGTTIN || stopsig == SIGTTOU){
-				cmd->pipeline->status = NEEDSTERMINAL;
-			}
-			//DEBUG_PRINT(("stopped by signal %d\n", stopsig));
-		}
-		else if(WIFCONTINUED(status)){
-			write(1,"cont",10);
-		} 
-		else{
-			write(2,"unhandled signal",50);
-		}
-
-		if(esh_signal_check_pipeline_isempty(cmd->pipeline)){
-			//lets pop
-			list_remove(&(cmd->pipeline->elem));
-			esh_pipeline_free(cmd->pipeline);
-		}
 	}
 }
+
+bool esh_signal_cleanup_fg(struct esh_command* cmd, int status){
+	assert(jobs.fg_job != NULL);
+	
+	if(WIFEXITED(status) || WIFSTOPPED(status)){
+		//tcsetpgrp(esh_sys_tty_getfd(),getpgrp());
+		jobs.fg_job = NULL;
+	}
+	
+	return esh_signal_cleanup(cmd,status);
+	/*bool pipecleaned = esh_signal_cleanup(cmd,status);
+	
+	if(pipecleaned)
+		jobs.fg_job = NULL
+	
+	return 1;*/
+}
+
+bool esh_signal_cleanup(struct esh_command* cmd, int status){
+
+	
+	//It ended
+	if(WIFSIGNALED(status) || WIFEXITED(status)){
+		cmd->pid = 0;
+	} 
+	else if(WIFSTOPPED(status)){
+
+		cmd->pipeline->status = STOPPED;
+
+		//If it needs terminal
+		int stopsig = WSTOPSIG(status);
+		if(stopsig == SIGTTIN || stopsig == SIGTTOU){
+			cmd->pipeline->status = NEEDSTERMINAL;
+		}
+	}
+	else if(WIFCONTINUED(status)){
+	} 
+	else{
+	}
+
+	if(esh_signal_check_pipeline_isempty(cmd->pipeline)){
+		//lets pop
+		list_remove(&(cmd->pipeline->elem));
+		esh_pipeline_free(cmd->pipeline);
+		return 1;
+	}
+	return 0;
+}
+
 //If the whole pipeline has a pid's of 0, return 1.
 bool esh_signal_check_pipeline_isempty(struct esh_pipeline* pipeline){
 	struct list_elem *i;
@@ -104,8 +117,6 @@ bool esh_signal_check_pipeline_isempty(struct esh_pipeline* pipeline){
     }
     return 1;
 }
-
-
 
 void esh_signal_kill_pgrp(pid_t pgrp, int sig){
 	DEBUG_PRINT(("Killing pgrp: %d with signal: %d\n", pgrp, sig));
