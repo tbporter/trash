@@ -52,16 +52,22 @@ struct esh_pipeline* esh_get_job_from_pgrp(pid_t pgrp) {
 
 /* Return pointer to pipeline or NULL */
 struct esh_command* esh_get_cmd_from_pid(pid_t pid) {
-    struct list_elem* pipeline;
-    for (pipeline = list_front(&jobs.jobs); pipeline !=
-            list_tail(&jobs.jobs); pipeline = list_next(pipeline)) {
-        struct list_elem* command;
-        for (command = list_front(&list_entry(pipeline, struct esh_pipeline,
-                        elem)->commands); command !=
-                list_tail(&list_entry(pipeline, struct esh_pipeline,
-                        elem)->commands); list_next(command)) {
-            if (list_entry(command, struct esh_command, elem)->pid == pid) {
-                return list_entry(pipeline, struct esh_command, elem);
+    struct list_elem* pipeline_elem;
+    int count = 0;
+    DEBUG_PRINT(("List size %d\n", list_size(&jobs.jobs)));
+    for (pipeline_elem = list_front(&jobs.jobs); pipeline_elem !=
+            list_tail(&jobs.jobs); pipeline_elem = list_next(pipeline_elem)) {
+        count++;
+        struct esh_pipeline* pipeline = list_entry(pipeline_elem, struct esh_pipeline, elem);
+        int count2 = 0;
+        struct list_elem* command_elem;
+        for (command_elem = list_front(&pipeline->commands); command_elem !=
+                list_tail(&pipeline->commands); command_elem = list_next(command_elem)) {
+            struct esh_command* command = list_entry(command_elem, struct esh_command, elem);
+            count2++;
+
+            if (command->pid == pid) {
+                return command;
             }
         }
     }
@@ -116,14 +122,18 @@ int esh_command_line_run(struct esh_command_line * cline) {
             /* Run queue */
             esh_signal_unblock(SIGCHLD);
             /* Wait on job */
-            if (waitpid(jobs.fg_job->pgrp, &status, WUNTRACED) == -1) {
+            pid_t pid;
+            if ((pid = waitpid(jobs.fg_job->pgrp, &status, WUNTRACED)) == -1) {
                 DEBUG_PRINT(("Failed on waitpid on fg job\n"));
                 waitpid_error();
                 return -1;
             }
+            else if (pid > 0) {
+                /* clean up */
+            }
             /* Lock down our stuff */
             esh_signal_block(SIGCHLD);
-            DEBUG_PRINT(("Finished waiting!\n"));
+            DEBUG_PRINT(("Finished waiting, return of %d\n", pid));
             jobs.fg_job = NULL;
             /* TODO: Remove this when signal handles it */
             if (tcsetpgrp(esh_sys_tty_getfd(), getpgrp()) == -1) {
