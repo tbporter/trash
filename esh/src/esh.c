@@ -127,7 +127,7 @@ main(int ac, char *av[])
         esh_command_line_run(cline);
         esh_signal_unblock(SIGCHLD);
         /* TODO: We need to make new memory management stuff here */
-        free(cline);
+        esh_command_line_free(cline);
         /*esh_command_line_free(cline);*/
     }
     return 0;
