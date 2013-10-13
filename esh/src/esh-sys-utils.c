@@ -154,6 +154,9 @@ esh_signal_sethandler(int sig, sa_sigaction_t handler)
     sigset_t emptymask;
 
     sigemptyset(&emptymask);
+    sigaddset(&emptymask, SIGINT);
+    sigaddset(&emptymask, SIGCHLD);
+    sigaddset(&emptymask, SIGTSTP);
     struct sigaction sa = {
         .sa_sigaction = handler,
         /* do not block any additional signals (besides 'sig') when
