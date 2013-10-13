@@ -105,7 +105,7 @@ int esh_command_line_run(struct esh_command_line * cline) {
             int status;
 
             DEBUG_PRINT(("tty_fd %d\n", esh_sys_tty_getfd()));
-            if (tcsetpgrp(esh_sys_tty_getfd(), pipeline->pgrp)) {
+            if (tcsetpgrp(esh_sys_tty_getfd(), pipeline->pgrp) == -1) {
                 DEBUG_PRINT(("Error on tcsetpgrp\n"));
                 tcsetpgrp_error();
                 return -1;
@@ -121,13 +121,18 @@ int esh_command_line_run(struct esh_command_line * cline) {
                 waitpid_error();
                 return -1;
             }
-            DEBUG_PRINT(("Finished waiting!\n"));
             /* TODO: Remove this when signal handles it */
-            if (tcsetpgrp(esh_sys_tty_getfd(), getpgrp())) {
+            if (tcsetpgrp(esh_sys_tty_getfd(), getpgrp()) == -1) {
                 DEBUG_PRINT(("Error on tcsetpgrp\n"));
                 tcsetpgrp_error();
                 return -1;
             }
+            if (WIFSTOPPED(status)) {
+                esh_sys_tty_save(&pipeline->saved_tty_state);
+                pipeline->bg_job = true;
+            }
+            esh_sys_tty_restore(tty_state);
+            DEBUG_PRINT(("Finished waiting!\n"));
             DEBUG_PRINT(("Reclaimed terminal\n"));
         }
         /* If background job */
@@ -395,7 +400,7 @@ pid_t esh_command_exec(struct esh_command* command, pid_t pgid) {
             dup2_error();
             return -1;
         }
-        DEBUG_PRINT(("Setting output\n"));
+        DEBUG_PRINT(("Setting child output\n"));
         if (command->output_fd != STDOUT_FILENO && dup2(command->output_fd,
                     STDOUT_FILENO) == -1) {
             DEBUG_PRINT(("Error on setting output\n"));

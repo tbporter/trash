@@ -1,6 +1,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/wait.h>
 
 #include "list.h"
 #include "esh.h"
@@ -44,6 +45,7 @@ int esh_builtin(struct esh_pipeline* pipeline) {
         /* Foreground code */
         if (!strcmp("fg", command->argv[0])) {
             DEBUG_PRINT(("Executing fg to %s\n", command->argv[1]));
+            int status;
             /* Protect the list while we access the job list */
             esh_signal_block(SIGCHLD);
             /* Find the job if it exists */
@@ -55,11 +57,7 @@ int esh_builtin(struct esh_pipeline* pipeline) {
             }
             /* call sigcont on job->pgrp */
             esh_sys_tty_restore(&job->saved_tty_state);
-            DEBUG_PRINT(("Foregrounding %d", job->jid));
-            if (kill(-1*job->pgrp, SIGCONT) == -1) {
-                kill_error();
-                return -1;
-            }
+            DEBUG_PRINT(("Setting foreground group\n"));
             if (tcsetpgrp(esh_sys_tty_getfd(), job->pgrp)) {
                 DEBUG_PRINT(("Error on tcsetpgrp\n"));
                 esh_signal_unblock(SIGCHLD);
@@ -67,8 +65,23 @@ int esh_builtin(struct esh_pipeline* pipeline) {
             }
             job->status = FOREGROUND;
             jobs.fg_job = job;
+            DEBUG_PRINT(("Foregrounding %d", job->jid));
+            if (kill(-1*job->pgrp, SIGCONT) == -1) {
+                kill_error();
+                return -1;
+            }
             /* Unblock here */
             esh_signal_unblock(SIGCHLD);
+            /* Wait on job */
+            if (waitpid(jobs.fg_job->pgrp, &status, WUNTRACED) == -1) {
+                DEBUG_PRINT(("Failed on waitpid on fg job\n"));
+                waitpid_error();
+                return -1;
+            }
+            if (WIFSTOPPED(status)) {
+                esh_sys_tty_save(&pipeline->saved_tty_state);
+            }
+            esh_sys_tty_restore(tty_state);
             return 1;
         }
     }
