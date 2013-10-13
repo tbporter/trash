@@ -48,42 +48,53 @@ void esh_signal_handler_chld(int sig, siginfo_t* info, void* _ctxt){
 		//tcsetpgrp() for forground
 
 	//wait on each pid to see what happened
+	write(1,"wait on pid\n",50);
 	while((pid = waitpid(-1,&status, WNOHANG) > 0)){
-
+		
+		write(1,"waited on pid\n",50);
 		cmd = esh_get_cmd_from_pid(pid);
-		if(jobs.fg_job->pgrp == pid){
-			//write(0,"fg job signal",);
+		write(1,"got cmd from pid\n",50);
+
+		if(jobs.fg_job->pgrp == cmd->pipeline->pgrp){
+			write(1,"fg job did something!\n",50);
 			if(WIFEXITED(status) || WIFSTOPPED(status)){
-				//write(0,"fg job signal: exit or stopped");
-				tcsetpgrp(esh_sys_tty_getfd(),getpgrp());
+				write(1,"fg job signal: exit or stopped\n",50);
+				//tcsetpgrp(esh_sys_tty_getfd(),getpgrp());
 				jobs.fg_job = NULL;
 			}
 		}
-		
-		if(WIFEXITED(status)){
-			//list_remove(cmd->elem);
-		} else if(WIFSIGNALED(status)) {
-			DEBUG_PRINT(("killed by signal %d\n", WTERMSIG(status)));
-		} else if(WIFSTOPPED(status)) {
+	
+		//It ended
+		if(WIFSIGNALED(status) || WIFEXITED(status)){
+			cmd->pid = 0;
+			write(1,"job ended\n",50);
+			//DEBUG_PRINT(("killed by signal %d\n", WTERMSIG(status)));
+		} 
+		else if(WIFSTOPPED(status)){
 			cmd->pipeline->status = STOPPED;
-			
+			write(1,"job stopped\n",50);
+			//If it needs terminal
 			int stopsig = WSTOPSIG(status);
 			if(stopsig == SIGTTIN || stopsig == SIGTTOU){
 				cmd->pipeline->status = NEEDSTERMINAL;
 			}
-			DEBUG_PRINT(("stopped by signal %d\n", stopsig));
-		} else if(WIFCONTINUED(status)) {
-			//printf("continued\n");
-		} else{
-
+			//DEBUG_PRINT(("stopped by signal %d\n", stopsig));
 		}
+		else if(WIFCONTINUED(status)){
+			write(1,"cont",10);
+		} 
+		else{
+			write(2,"unhandled signal",50);
+		}
+
 		if(esh_signal_check_pipeline_isempty(cmd->pipeline)){
+			//lets pop
 			list_remove(&(cmd->pipeline->elem));
 			esh_pipeline_free(cmd->pipeline);
 		}
 	}
 }
-
+//If the whole pipeline has a pid's of 0, return 1.
 bool esh_signal_check_pipeline_isempty(struct esh_pipeline* pipeline){
 	struct list_elem *i;
     for (i = list_begin(&(pipeline->commands)); i != list_end(&(pipeline->commands)); i = list_next(i)) {
@@ -94,7 +105,11 @@ bool esh_signal_check_pipeline_isempty(struct esh_pipeline* pipeline){
     return 1;
 }
 
+
+
 void esh_signal_kill_pgrp(pid_t pgrp, int sig){
 	DEBUG_PRINT(("Killing pgrp: %d with signal: %d\n", pgrp, sig));
 	kill(-1*pgrp,sig);
+	//sigint
+	//sigcont
 }
