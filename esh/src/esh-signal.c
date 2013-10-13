@@ -1,7 +1,7 @@
 #include "esh.h"
 #include "esh-job.h"
 #include "esh-signal.h"
-#include "signal.h"
+#include <signal.h>
 #include "esh-debug.h"
 #include "esh-error.h"
 #include "esh-sys-utils.h"
@@ -12,16 +12,16 @@
 struct esh_jobs jobs;
 
 void esh_signal_init(){
-	signal(SIGINT, esh_signal_handler_int);
-	signal(SIGSTOP, esh_signal_handler_stop);
-	signal(SIGCHLD, esh_signal_handler_chld);
-}
+	esh_signal_sethandler(SIGINT, esh_signal_handler_int);
+	esh_signal_sethandler(SIGSTOP, esh_signal_handler_stop);
+	esh_signal_sethandler(SIGCHLD, esh_signal_handler_chld);
 
-void esh_signal_handler_int(int sig){
+}
+void esh_signal_handler_int(int sig, siginfo_t* info, void* _ctxt){
 	esh_signal_fg(sig);
 }
 
-void esh_signal_handler_stop(int sig){
+void esh_signal_handler_stop(int sig, siginfo_t* info, void* _ctxt){
 	esh_signal_fg(sig);
 }
 
@@ -35,7 +35,7 @@ void esh_signal_fg(int sig){
 	}
 }
 
-void esh_signal_handler_chld(int sig){
+void esh_signal_handler_chld(int sig, siginfo_t* info, void* _ctxt){
 	int status;
 	pid_t pid;
 	struct esh_command* cmd;
@@ -47,28 +47,35 @@ void esh_signal_handler_chld(int sig){
 
 		cmd = esh_get_cmd_from_pid(pid);
 		if(jobs.fg_job->pgrp == pid){
+			//write(0,"fg job signal",);
 			if(WIFEXITED(status) || WIFSTOPPED(status)){
+				//write(0,"fg job signal: exit or stopped");
 				tcsetpgrp(esh_sys_tty_getfd(),getpgrp());
 				jobs.fg_job = NULL;
 			}
 		}
-		/*
+		
 		if(WIFEXITED(status)){
-			list_remove(cmd->elem);
+			//list_remove(cmd->elem);
 		} else if(WIFSIGNALED(status)) {
-			//printf("killed by signal %d\n", WTERMSIG(status));
+			DEBUG_PRINT(("killed by signal %d\n", WTERMSIG(status)));
 		} else if(WIFSTOPPED(status)) {
 			cmd->pipeline->status = STOPPED;
-			printf("stopped by signal %d\n", WSTOPSIG(status));
+			
+			int stopsig = WSTOPSIG(status);
+			if(stopsig == SIGTTIN || stopsig == SIGTTOU){
+				cmd->pipeline->status = NEEDSTERMINAL;
+			}
+			DEBUG_PRINT(("stopped by signal %d\n", stopsig));
 		} else if(WIFCONTINUED(status)) {
 			//printf("continued\n");
-		}*/
-		if(esh_signal_check_pipeline_isempty(cmd->pipeline)){
-			
-			//list_remove()
-			//free pipe memory
-		}
+		} else{
 
+		}
+		if(esh_signal_check_pipeline_isempty(cmd->pipeline)){
+			list_remove(&(cmd->pipeline->elem));
+			esh_pipeline_free(cmd->pipeline);
+		}
 	}
 }
 
