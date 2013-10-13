@@ -418,7 +418,8 @@ pid_t esh_command_exec(struct esh_command* command, pid_t pgid) {
          * shell know */
         DEBUG_PRINT(("Error trying to execvp\n"));
         execvp_error();
-        return -1;
+        /* Something want horribly wrong */
+        exit(EXIT_FAILURE);
 
     }
     /* This return statement allows just passing the return of this function to
