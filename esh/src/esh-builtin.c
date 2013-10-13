@@ -84,6 +84,10 @@ int esh_builtin(struct esh_pipeline* pipeline) {
             esh_sys_tty_restore(tty_state);
             return 1;
         }
+        if (!strcmp("kill", command->argv[0])) {
+            DEBUG_PRINT(("Executing kill to %s\n", command->argv[1]));
+        }
+
     }
     return 0;
 }
