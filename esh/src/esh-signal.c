@@ -30,7 +30,11 @@ void esh_signal_fg(int sig){
 }
 
 void esh_signal_handler_chld(int sig){
-	wait(-1,)
+	int status;
+	pid_t = pid;
+	while((pid = waitpid(-1,&status, WNOHANG) > 0){
+		
+	}
 }
 
 void esh_signal_kill_pgrp_int(pid_t pgrp){
