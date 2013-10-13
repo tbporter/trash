@@ -95,6 +95,25 @@ int esh_command_line_run(struct esh_command_line * cline) {
             esh_pipeline_free(pipeline);
             continue;
         }
+        else if (!list_empty(&esh_plugin_list) && list_front(&pipeline->commands) == list_back(&pipeline->commands)){
+            struct esh_command* command = list_entry(list_front(&pipeline->commands),
+                    struct esh_command, elem);
+            struct list_elem* plugin_elem = list_front(&esh_plugin_list);
+            bool success = false;
+            DEBUG_PRINT(("Checking plugins for builtins\n"));
+            for (; plugin_elem != list_tail(&esh_plugin_list); plugin_elem =
+                    list_next(plugin_elem)) {
+                struct esh_plugin* plugin = list_entry(plugin_elem, struct
+                        esh_plugin, elem);
+                if (plugin->process_builtin != NULL && plugin->process_builtin(command)) {
+                    DEBUG_PRINT(("Found builtin\n"));
+                    esh_pipeline_free(pipeline);
+                    success = true;
+                    break;
+                }
+            }
+            if (success) continue;
+        }
 
         /* Protect the list while we access the job list */
         esh_signal_block(SIGCHLD);
