@@ -8,6 +8,7 @@
 #include "list.h"
 
 #include "esh.h"
+#include "esh-sys-utils.h"
 #include "esh-job.h"
 #include "esh-error.h"
 #include "esh-macros.h"
@@ -73,81 +74,58 @@ struct esh_command* esh_get_cmd_from_pid(pid_t pid) {
 int esh_command_line_run(struct esh_command_line * cline) {
 
     /* Run through each pipeline */
-    struct list_elem* pipeline;
-    for (pipeline = list_front(&cline->pipes);pipeline !=
-            list_tail(&cline->pipes); pipeline = list_next(pipeline)) {
+    while (!list_empty(&cline->pipes)) {
+        struct list_elem* pipeline_elem = list_pop_front(&cline->pipes);
+        struct esh_pipeline* pipeline = list_entry(pipeline_elem, struct esh_pipeline, elem);
         /* run it if it's a builtin */
-        int builtin = esh_builtin(list_entry(pipeline, struct esh_pipeline, elem));
+        int builtin = esh_builtin(pipeline);
         if (builtin == -1) {
             return -1;
         }
         else if (builtin) {
+            DEBUG_PRINT(("builtin executed, continuing"));
             /* If this was handled by a builtin carry on but clean up since
              * signals won't do that */
-            struct list_elem* new_pipeline = list_prev(pipeline);
-            list_remove(pipeline);
-            esh_pipeline_free(list_entry(pipeline, struct esh_pipeline, elem));
-            pipeline = new_pipeline;
+            esh_pipeline_free(pipeline);
             continue;
         }
 
+        /* Protect the list while we access the job list */
+        esh_signal_block(SIGCHLD);
+        list_push_back(&jobs.jobs, pipeline_elem);
+
         /* Set up signal queuing */
         DEBUG_PRINT(("Initilizing pipeline\n"));
-        RetError(esh_pipeline_init(list_entry(pipeline, struct esh_pipeline, elem)));
+        RetError(esh_pipeline_init(pipeline));
         DEBUG_PRINT(("Executing pipeline\n"));
-        RetError(esh_pipeline_run(list_entry(pipeline, struct esh_pipeline, elem)));
+        RetError(esh_pipeline_run(pipeline));
 
         /* If foreground job */
-        if (!list_entry(pipeline, struct esh_pipeline, elem)->bg_job) {
+        if (!pipeline->bg_job) {
             int status;
-            DEBUG_PRINT(("Waiting on %s %d\n",
-                        list_entry(list_back(&list_entry(pipeline, struct
-                                    esh_pipeline, elem)->commands), struct
-                            esh_command, elem)->argv[0],
-                        list_entry(list_back(&list_entry(pipeline, struct
-                                    esh_pipeline, elem)->commands), struct
-                            esh_command, elem)->pid));
-            /* After that ugly debugging statement... */
-            jobs.fg_job = list_entry(pipeline, struct esh_pipeline, elem);
-            DEBUG_PRINT(("fg_job->pggrp: %d\n",jobs.fg_job->pgrp));         
-            list_entry(pipeline, struct esh_pipeline, elem)->status = FOREGROUND;
+
+            if (tcsetpgrp(esh_sys_tty_getfd(), pipeline->pgrp)) {
+                DEBUG_PRINT(("Error on tcsetpgrp\n"));
+                tcsetpgrp_error();
+                return -1;
+            }
+            pipeline->status = FOREGROUND;
+            jobs.fg_job = pipeline;
+            DEBUG_PRINT(("fg_job->pgrp: %d\n", jobs.fg_job->pgrp));         
             /* Run queue */
-            /* TODO: signal_queue_process */
-            if (waitpid(list_entry(list_back(&list_entry(pipeline, struct
-                                    esh_pipeline, elem)->commands), struct
-                            esh_command, elem)->pid, &status, WUNTRACED) == -1)
-            {
-                DEBUG_PRINT(("Error on waitpid\n"));
-                waitpid_error();
-            }
-            jobs.fg_job = NULL;
-            /* If process is still running, just bg */
-            if (WIFSTOPPED(status)) {
-                DEBUG_PRINT(("Process stopped in background\n"));
-                struct list_elem* new_pipeline = list_prev(pipeline);
-                list_remove(pipeline);
-                list_push_back(&jobs.jobs, pipeline);
-                pipeline = new_pipeline;
-            }
+            esh_signal_unblock(SIGCHLD);
+            /* Wait on job */
+            while(waitpid(pipeline->pgrp, &status, WUNTRACED) == -1 && jobs.fg_job);
 
             DEBUG_PRINT(("Finished waiting\n"));
-            /* TODO: Add code to use status to determine if this process group was
-             * stopped or needs to be killed tervis return 1 if it's
-             * backgrounded and 0 if it's not*/
         }
         /* If background job */
         else {
-            list_entry(pipeline, struct esh_pipeline, elem)->status = BACKGROUND;
+            pipeline->status = BACKGROUND;
             DEBUG_PRINT(("Setting up backgrounding\n"));
-            struct list_elem* new_pipeline = list_prev(pipeline);
-            list_remove(pipeline);
-            list_push_back(&jobs.jobs, pipeline);
-            pipeline = new_pipeline;
-            /* Run queue */
-            /*signal_queue_process*/
         }
+        esh_signal_unblock(SIGCHLD);
     }
-
     return 0;
 }
 

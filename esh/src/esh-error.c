@@ -60,3 +60,11 @@ void waitpid_error() {
 void chdir_error() {
     DEBUG_PRINT(("esh-error.c:chdir_error() not yet implemented\n"));
 }
+
+void tcsetpgrp_error() {
+    DEBUG_PRINT(("esh-error.c:tcsetpgrp_error() not yet implemented\n"));
+}
+
+void kill_error() {
+    DEBUG_PRINT(("esh-error.c:kill_error() not yet implemented\n"));
+}

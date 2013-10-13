@@ -10,4 +10,6 @@ void dup2_error(void);
 void execvp_error(void);
 void waitpid_error(void);
 void chdir_error(void);
+void tcsetpgrp_error(void);
+void kill_error(void);
 #endif

@@ -3,7 +3,7 @@
 struct esh_jobs {
     struct list/* <esh_pipeline> */ jobs;
     struct esh_pipeline* fg_job;
-    int current_jid;
+    pid_t current_jid;
 };
 void esh_jobs_init(void);
 struct list* esh_get_jobs(void);
