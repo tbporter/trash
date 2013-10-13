@@ -6,27 +6,29 @@
 #include "esh-error.h"
 #include "esh-sys-utils.h"
 
+#include <assert.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 struct esh_jobs jobs;
 
 void esh_signal_init(){
-	esh_signal_sethandler(SIGINT, esh_signal_handler_int);
-	esh_signal_sethandler(SIGSTOP, esh_signal_handler_stop);
+	signal(SIGTSTP,esh_signal_handler_stop);
+	signal(SIGINT,esh_signal_handler_int);
 	esh_signal_sethandler(SIGCHLD, esh_signal_handler_chld);
 
 }
-void esh_signal_handler_int(int sig, siginfo_t* info, void* _ctxt){
+void esh_signal_handler_int(int sig){
+	assert (sig == SIGINT);
 	esh_signal_fg(sig);
 }
 
-void esh_signal_handler_stop(int sig, siginfo_t* info, void* _ctxt){
+void esh_signal_handler_stop(int sig){
+	assert (sig == SIGTSTP);
 	esh_signal_fg(sig);
 }
 
 void esh_signal_fg(int sig){
-	//
 	if(jobs.fg_job != NULL){
 		esh_signal_kill_pgrp(jobs.fg_job->pgrp,sig);
 	}
@@ -36,6 +38,8 @@ void esh_signal_fg(int sig){
 }
 
 void esh_signal_handler_chld(int sig, siginfo_t* info, void* _ctxt){
+	assert (sig == SIGCHLD);
+
 	int status;
 	pid_t pid;
 	struct esh_command* cmd;

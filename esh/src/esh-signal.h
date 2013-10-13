@@ -3,8 +3,8 @@
 
 #include "esh-sys-utils.h"
 void esh_signal_init(void);
-void esh_signal_handler_int(int, siginfo_t *, void *);
-void esh_signal_handler_stop(int, siginfo_t *, void *);
+void esh_signal_handler_int(int);
+void esh_signal_handler_stop(int);
 void esh_signal_handler_chld(int, siginfo_t *, void *);
 void esh_signal_fg(int sig);
 void esh_signal_kill_pgrp(pid_t pgrp, int sig);
