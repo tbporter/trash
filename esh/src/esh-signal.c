@@ -16,7 +16,8 @@ void esh_signal_init(){
 	signal(SIGTSTP,esh_signal_handler_stop);
 	signal(SIGINT,esh_signal_handler_int);
 	esh_signal_sethandler(SIGCHLD, esh_signal_handler_chld);
-
+	esh_signal_block(SIGTTIN);
+	esh_signal_block(SIGTTOU);
 }
 void esh_signal_handler_int(int sig){
 	assert (sig == SIGINT);
