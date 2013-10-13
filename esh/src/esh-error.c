@@ -68,3 +68,7 @@ void tcsetpgrp_error() {
 void kill_error() {
     DEBUG_PRINT(("esh-error.c:kill_error() not yet implemented\n"));
 }
+
+void setpgrp_error() {
+    DEBUG_PRINT(("esh-error.c:setpgrp_error() not yet implemented\n"));
+}

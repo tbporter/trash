@@ -13,6 +13,8 @@
 #include "esh-job.h"
 #include "esh-signal.h"
 #include "esh-sys-utils.h"
+
+struct termios* tty_state;
  
 static void
 usage(char *progname)
@@ -94,6 +96,7 @@ main(int ac, char *av[])
     }
 
     esh_jobs_init();
+    tty_state = esh_sys_tty_init();
     esh_signal_init();
     esh_plugin_initialize(&shell);
 

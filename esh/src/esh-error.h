@@ -12,4 +12,5 @@ void waitpid_error(void);
 void chdir_error(void);
 void tcsetpgrp_error(void);
 void kill_error(void);
+void setpgrp_error(void);
 #endif

@@ -104,6 +104,7 @@ int esh_command_line_run(struct esh_command_line * cline) {
         if (!pipeline->bg_job) {
             int status;
 
+            DEBUG_PRINT(("tty_fd %d\n", esh_sys_tty_getfd()));
             if (tcsetpgrp(esh_sys_tty_getfd(), pipeline->pgrp)) {
                 DEBUG_PRINT(("Error on tcsetpgrp\n"));
                 tcsetpgrp_error();
@@ -115,9 +116,19 @@ int esh_command_line_run(struct esh_command_line * cline) {
             /* Run queue */
             esh_signal_unblock(SIGCHLD);
             /* Wait on job */
-            while(waitpid(pipeline->pgrp, &status, WUNTRACED) == -1 && jobs.fg_job);
-
-            DEBUG_PRINT(("Finished waiting\n"));
+            if (waitpid(jobs.fg_job->pgrp, &status, WUNTRACED) == -1) {
+                DEBUG_PRINT(("Failed on waitpid on fg job\n"));
+                waitpid_error();
+                return -1;
+            }
+            DEBUG_PRINT(("Finished waiting!\n"));
+            /* TODO: Remove this when signal handles it */
+            if (tcsetpgrp(esh_sys_tty_getfd(), getpgrp())) {
+                DEBUG_PRINT(("Error on tcsetpgrp\n"));
+                tcsetpgrp_error();
+                return -1;
+            }
+            DEBUG_PRINT(("Reclaimed terminal\n"));
         }
         /* If background job */
         else {
@@ -353,6 +364,14 @@ pid_t esh_command_exec(struct esh_command* command, pid_t pgid) {
                 return -1;
             }
             pgid = command->pid;
+            if (!command->pipeline->bg_job) {
+                /* TODO: Get this working! */
+                DEBUG_PRINT(("This should get the terminal!\n"));
+                /*if (tcsetpgrp(esh_sys_tty_getfd(), pgid) == -1) {
+                    tcsetpgrp_error();
+                    return -1;
+                }*/
+            }
         }
         else {
             if (setpgid(command->pid, pgid) == -1) {
@@ -365,8 +384,9 @@ pid_t esh_command_exec(struct esh_command* command, pid_t pgid) {
     else {
         /* This is the child and will only be reached by the parent if fork
          * didn't return -1 */
-        /* disable signal handling for child */
-
+        if (pgid == 0) {
+            setpgrp();
+        }
         /* Could probably handle EINTR also check to make sure you're not
          * trying to dup2 itself */
         if (command->input_fd != STDIN_FILENO && dup2(command->input_fd,

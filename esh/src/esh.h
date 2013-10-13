@@ -204,3 +204,6 @@ void esh_plugin_initialize(struct esh_shell *shell);
 
 /* List of loaded plugins */
 extern struct list esh_plugin_list;
+
+/* Saved tty state */
+extern struct termios* tty_state;

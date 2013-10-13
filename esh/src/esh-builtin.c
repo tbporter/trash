@@ -71,7 +71,6 @@ int esh_builtin(struct esh_pipeline* pipeline) {
             esh_signal_unblock(SIGCHLD);
             return 1;
         }
-        /* */
     }
     return 0;
 }
