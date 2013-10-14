@@ -68,6 +68,7 @@ int esh_builtin(struct esh_pipeline* pipeline) {
             /* Book keeping */
             job->status = FOREGROUND;
             jobs.fg_job = job;
+            esh_print_job_status(job);
             DEBUG_PRINT(("Foregrounding %d\n", job->jid));
             if (kill(-1*job->pgrp, SIGCONT) == -1) {
                 kill_error();
@@ -158,7 +159,7 @@ void esh_print_job_status(struct esh_pipeline* pipeline) {
     /* Print out the job information first */
     printf("[%d]\t", pipeline->jid);
     /* Print status */
-    if (pipeline->status == BACKGROUND) {
+    if (pipeline->status == BACKGROUND || pipeline->status == FOREGROUND) {
         printf("Running\t(");
     }
     else {
