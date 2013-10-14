@@ -13,6 +13,7 @@
 #include "esh-error.h"
 #include "esh-macros.h"
 #include "esh-builtin.h"
+#include "esh-signal.h"
 
 struct esh_jobs jobs;
 
@@ -54,7 +55,7 @@ struct esh_pipeline* esh_get_job_from_pgrp(pid_t pgrp) {
 struct esh_command* esh_get_cmd_from_pid(pid_t pid) {
     struct list_elem* pipeline_elem;
     int count = 0;
-    DEBUG_PRINT(("List size %d\n", list_size(&jobs.jobs)));
+    DEBUG_PRINT(("List size %d of %d\n", list_size(&jobs.jobs), pid));
     for (pipeline_elem = list_front(&jobs.jobs); pipeline_elem !=
             list_tail(&jobs.jobs); pipeline_elem = list_next(pipeline_elem)) {
         count++;
@@ -67,6 +68,7 @@ struct esh_command* esh_get_cmd_from_pid(pid_t pid) {
             count2++;
 
             if (command->pid == pid) {
+                DEBUG_PRINT(("Found pid of command %d\n", pid));
                 return command;
             }
         }
@@ -89,7 +91,7 @@ int esh_command_line_run(struct esh_command_line * cline) {
             return -1;
         }
         else if (builtin) {
-            DEBUG_PRINT(("builtin executed, continuing"));
+            DEBUG_PRINT(("builtin executed, continuing\n"));
             /* If this was handled by a builtin carry on but clean up since
              * signals won't do that */
             esh_pipeline_free(pipeline);
@@ -142,19 +144,28 @@ int esh_command_line_run(struct esh_command_line * cline) {
             esh_signal_unblock(SIGCHLD);
             /* Wait on job */
             pid_t pid;
-            if ((pid = waitpid(jobs.fg_job->pgrp, &status, WUNTRACED)) == -1) {
-                DEBUG_PRINT(("Failed on waitpid on fg job\n"));
-                waitpid_error();
-                return -1;
-            }
-            else if (pid > 0) {
-                /* clean up */
+            bool running = 1;
+            while (running) {
+                if ((pid = waitpid(jobs.fg_job->pgrp, &status, WUNTRACED)) == -1) {
+                    DEBUG_PRINT(("Failed on waitpid on fg job\n"));
+                    waitpid_error();
+                    return -1;
+                }
+                else if (pid > 0 && !WIFSTOPPED(status)) {
+                    /* clean up */
+                    struct esh_command* cmd = esh_get_cmd_from_pid(pid);
+                    running = !esh_signal_cleanup_fg(cmd, status);
+                }
+                else {
+                    break;
+                }
             }
             /* Lock down our stuff */
             esh_signal_block(SIGCHLD);
             DEBUG_PRINT(("Finished waiting, return of %d\n", pid));
+            /* Clear the foreground job */
             jobs.fg_job = NULL;
-            /* TODO: Remove this when signal handles it */
+            /* Reclaim control of the terminal */
             if (tcsetpgrp(esh_sys_tty_getfd(), getpgrp()) == -1) {
                 DEBUG_PRINT(("Error on tcsetpgrp\n"));
                 tcsetpgrp_error();
@@ -187,14 +198,8 @@ int esh_pipeline_init(struct esh_pipeline * pipeline) {
      * list_front) */
 
     /* Set up jids */
-    if (pipeline->bg_job) {
-        DEBUG_PRINT(("Setting jid to %d\n", jobs.current_jid + 1));
-        pipeline->jid = ++jobs.current_jid;
-    }
-    else {
-        DEBUG_PRINT(("Foreground job, setting jid to -1\n"));
-        pipeline->jid = -1;
-    }
+    DEBUG_PRINT(("Setting jid to %d\n", jobs.current_jid + 1));
+    pipeline->jid = ++jobs.current_jid;
 
     /* IO redirection init */
     DEBUG_PRINT(("Executing pipeline iored code\n"));
