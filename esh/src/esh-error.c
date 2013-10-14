@@ -1,74 +1,54 @@
 #include <errno.h>
+#include <stdio.h>
 #include <unistd.h>
 #include "esh-error.h"
 #include "esh-debug.h"
 /* These functions handle the corresponding syscall's errors and print an
  * appropriate message. */
 void open_error() {
-    DEBUG_PRINT(("esh-error.c:open_error() not yet implemented\n"));
-    switch (errno) {
-        case EACCES:    DEBUG_PRINT(("Permission denied\n"));
-                        break;
-        case EDQUOT:    DEBUG_PRINT(("Hit block quota\n"));
-                        break;
-        case EFAULT:    DEBUG_PRINT(("Outside accessible space\n"));
-                        break;
-        case EINTR:     DEBUG_PRINT(("open interrupted by signal\n"));
-                        break;
-    }
+    perror("open error");
 }
 
 void close_error() {
-    DEBUG_PRINT(("esh-error.c:close_error() not yet implemented\n"));
+    perror("close error");
 }
 
 void pipe_error() {
-    DEBUG_PRINT(("esh-error.c:pipe_error() not yet implemented\n"));
+    perror("pipe error");
 }
 
 void fork_error() {
-    DEBUG_PRINT(("esh-error.c:pipe_error() not yet implemented\n"));
+    perror("fork error");
 }
 
 void setpgid_error() {
-    DEBUG_PRINT(("esh-error.c:setpgid_error() not yet implemented\n"));
+    perror("setpgid error");
 }
 
 void dup2_error() {
-    switch (errno) {
-        case EBADF: DEBUG_PRINT(("oldfd isn't an open file descriptor.\n"));
-                    break;
-        case EBUSY: DEBUG_PRINT(("open and dup race condition\n"));
-                    break;
-        case EINTR: DEBUG_PRINT(("Interrupted by signal\n"));
-                    break;
-        case EINVAL:DEBUG_PRINT(("Invalid flags or oldfd equal to newfd\n"));
-                    break;
-        case EMFILE:DEBUG_PRINT(("Maximum number of file descriptors open\n"));
-                    break;
-    }
+    perror("dup2 error");
 }
 
 void execvp_error() {
-    DEBUG_PRINT(("esh-error.c:execvp_error() not yet implemented\n"));
+    perror("execvp error");
 }
 
 void waitpid_error() {
-    DEBUG_PRINT(("esh-error.c:waitpid_error() not yet implemented\n"));
+    perror("waitpid error");
 }
 
 void chdir_error() {
-    DEBUG_PRINT(("esh-error.c:chdir_error() not yet implemented\n"));
+    perror("chdir error");
 }
 
 void tcsetpgrp_error() {
-    DEBUG_PRINT(("esh-error.c:tcsetpgrp_error() not yet implemented\n"));
+    perror("tcsetpgrp error");
 }
 
 void kill_error() {
-    DEBUG_PRINT(("esh-error.c:kill_error() not yet implemented\n"));
+    perror("kill error");
 }
 
 void setpgrp_error() {
-    DEBUG_PRINT(("esh-error.c:setpgrp_error() not yet implemented\n"));
+    perror("setpgrp error");
 }
