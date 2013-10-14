@@ -99,10 +99,13 @@ int esh_builtin(struct esh_pipeline* pipeline) {
                 kill_error();
                 return -1;
             }
+            if (kill(-1*job->pgrp, SIGCONT) == -1) {
+                kill_error();
+                return -1;
+            }
 
             /* Unblock here */
             esh_signal_unblock(SIGCHLD);
-            DEBUG_PRINT(("kill not implemented yet\n"));
             return 1;
         }
         else if (!strcmp("jobs", command->argv[0])) {
@@ -117,10 +120,10 @@ int esh_builtin(struct esh_pipeline* pipeline) {
                 printf("[%d]\t", pipeline->jid);
                 /* Print status */
                 if (pipeline->status == BACKGROUND) {
-                    printf("running\t(");
+                    printf("Running\t(");
                 }
                 else {
-                    printf("stopped\t(");
+                    printf("Stopped\t(");
                 }
                 
                 struct list_elem* command_elem = list_front(&pipeline->commands);
@@ -141,7 +144,7 @@ int esh_builtin(struct esh_pipeline* pipeline) {
                         printf(" %s", command->argv[i]);
                     }
                 }
-                printf(")\r\n");
+                printf(")\n");
             }
             return 1;
             esh_signal_unblock(SIGCHLD);
