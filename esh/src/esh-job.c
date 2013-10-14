@@ -145,7 +145,7 @@ int esh_command_line_run(struct esh_command_line * cline) {
         if (!pipeline->bg_job) {
             int status;
 
-            DEBUG_PRINT(("tty_fd %d\n", esh_sys_tty_getfd()));
+            DEBUG_PRINT(("Setting foreground %d\n", pipeline->pgrp));
             if (tcsetpgrp(esh_sys_tty_getfd(), pipeline->pgrp) == -1) {
                 DEBUG_PRINT(("Error on tcsetpgrp\n"));
                 tcsetpgrp_error();
@@ -192,6 +192,7 @@ int esh_command_line_run(struct esh_command_line * cline) {
                 pipeline->bg_job = true;
             }
             /* Reclaim control of the terminal */
+            DEBUG_PRINT(("Reclaiming foreground\n"));
             if (tcsetpgrp(esh_sys_tty_getfd(), getpgrp()) == -1) {
                 DEBUG_PRINT(("Error on tcsetpgrp\n"));
                 tcsetpgrp_error();
@@ -437,7 +438,7 @@ pid_t esh_command_exec(struct esh_command* command, pid_t pgid) {
             }
             pgid = command->pid;
             if (!command->pipeline->bg_job) {
-                DEBUG_PRINT(("Setting terminal control group\n"));
+                DEBUG_PRINT(("Setting terminal control group to foreground\n"));
                 if (tcsetpgrp(esh_sys_tty_getfd(), pgid) == -1) {
                     DEBUG_PRINT(("Error on tcsetpgrp\n"));
                     tcsetpgrp_error();
@@ -454,6 +455,9 @@ pid_t esh_command_exec(struct esh_command* command, pid_t pgid) {
         }
     }
     else {
+        esh_signal_unblock(SIGTTIN);
+        esh_signal_unblock(SIGTTOU);
+        esh_signal_unblock(SIGCHLD);
         /* This is the child and will only be reached by the parent if fork
          * didn't return -1 */
         if (pgid == 0) {
@@ -480,7 +484,7 @@ pid_t esh_command_exec(struct esh_command* command, pid_t pgid) {
         execvp(command->argv[0], command->argv);
         /* if this returns something is messed up, not sure how to let the main
          * shell know */
-        DEBUG_PRINT(("Error trying to execvp\n"));
+        DEBUG_PRINT(("Error trying to execvp %s\n", command->argv[0]));
         execvp_error();
         /* Something want horribly wrong */
         exit(EXIT_FAILURE);
