@@ -159,7 +159,7 @@ int esh_builtin(struct esh_pipeline* pipeline) {
                 errprintf("Invalid job number %s", command->argv[1]);
                 return -1;
             }
-            if (kill(-1*job->pgrp, SIGCONT) == -1) {
+            if (kill(-1*job->pgrp, SIGTSTP) == -1) {
                 kill_error();
                 return -1;
             }
