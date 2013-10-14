@@ -22,8 +22,8 @@ if hasattr(def_module, 'logfile'):
 c = pexpect.spawn(def_module.shell, drainpty=True, logfile=logfile)
 atexit.register(force_shell_termination, shell_process=c)
 
-
-assert 1 == 0, "Unimplemented functionality"
-
+#pipe multiline echo into grep, will return the line with 'derp'
+c.sendline("echo -e \"herp\nderp\" | grep derp ")
+assert c.expect_exact("derp") == 0, "didn't pipe to grep correctly"
 
 shellio.success()
