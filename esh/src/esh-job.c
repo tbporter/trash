@@ -3,6 +3,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "esh-debug.h"
 #include "list.h"
@@ -157,18 +158,21 @@ int esh_command_line_run(struct esh_command_line * cline) {
             esh_signal_unblock(SIGCHLD);
             /* Wait on job */
             pid_t pid;
+            pid_t pgrp = pipeline->pgrp;
             bool running = 1;
             while (running) {
-                if ((pid = waitpid(jobs.fg_job->pgrp, &status, WUNTRACED)) == -1) {
-                    DEBUG_PRINT(("Failed on waitpid on fg job\n"));
-                    waitpid_error();
-                    return -1;
+                if ((pid = waitpid(pgrp, &status, WUNTRACED)) == -1) {
+                    if (errno == ECHILD) {
+                        /* This means the signal handler picked this up */
+                        break;
+                    }
                 }
                 else if (pid > 0 && !WIFSTOPPED(status)) {
                     /* clean up */
                     esh_signal_block(SIGCHLD);
                     struct esh_command* cmd = esh_get_cmd_from_pid(pid);
                     running = !esh_signal_cleanup_fg(cmd, status);
+                    pid = 0;
                     esh_signal_unblock(SIGCHLD);
                 }
                 else {
@@ -427,7 +431,7 @@ pid_t esh_command_exec(struct esh_command* command, pid_t pgid) {
         /* setpgid */
         if (pgid == 0) {
             if (setpgid(command->pid, command->pid) == -1) {
-                DEBUG_PRINT(("Error in setpgid\n"));
+                DEBUG_PRINT(("Error in setpgid for initial process\n"));
                 setpgid_error();
                 return -1;
             }
@@ -454,6 +458,9 @@ pid_t esh_command_exec(struct esh_command* command, pid_t pgid) {
          * didn't return -1 */
         if (pgid == 0) {
             setpgrp();
+        }
+        else {
+            setpgid(0, pgid);
         }
         /* Could probably handle EINTR also check to make sure you're not
          * trying to dup2 itself */
