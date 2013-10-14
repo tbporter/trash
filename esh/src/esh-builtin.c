@@ -117,28 +117,31 @@ int esh_builtin(struct esh_pipeline* pipeline) {
                 printf("[%d]\t", pipeline->jid);
                 /* Print status */
                 if (pipeline->status == BACKGROUND) {
-                    printf("running\t");
+                    printf("running\t(");
                 }
                 else {
-                    printf("stopped\t");
+                    printf("stopped\t(");
                 }
                 
                 struct list_elem* command_elem = list_front(&pipeline->commands);
                 struct esh_command* command = list_entry(command_elem, struct esh_command, elem);
+
+                DEBUG_PRINT(("Printing command\n"));
                 int i;
-                for (i = 0; command->argv[i] != NULL; i++) {
-                    printf("%s ", command->argv[i]);
+                printf("%s", command->argv[0]);
+                for (i = 1; command->argv[i] != NULL; i++) {
+                    printf(" %s", command->argv[i]);
                 }
                 command_elem = list_next(command_elem);
 
                 for (; command_elem != list_tail(&pipeline->commands); command_elem = list_next(command_elem)) {
                     command = list_entry(command_elem, struct esh_command, elem);
-                    printf("| ");
+                    printf(" |");
                     for (i = 0; command->argv[i] != NULL; i++) {
-                        printf("%s ", command->argv[i]);
+                        printf(" %s", command->argv[i]);
                     }
                 }
-                printf("\n");
+                printf(")\r\n");
             }
             return 1;
             esh_signal_unblock(SIGCHLD);
