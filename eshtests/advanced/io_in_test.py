@@ -35,7 +35,7 @@ assert c.expect_exact("derp") == 0, "file input didn't work"
 
 #give cat a nonexistant file
 c.sendline("cat < ffdsaffdsafjasfsafdsadfsaf")
-assert c.expect_exect("fopen error: No such file or directory") == 0, "did not handle incorrect file correctly"
+assert c.expect_exect("fopen error: No such file or directory\r\n") == 0, "did not handle incorrect file correctly"
 
 
 shellio.success()

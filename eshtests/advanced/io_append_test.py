@@ -32,7 +32,7 @@ assert c.expect_exact("derp") == 0, "file didn't recieve out correctly"
 #append 'derp' to herp.txt, gives us 'derp\nderp'
 c.sendline("echo derp >> herp.txt")
 c.sendline("cat herp.txt")
-assert c.expect_exact("derp\nderp") == 0, "file didn't append"
+assert c.expect_exact("derp\r\nderp") == 0, "file didn't append"
 
 #append derp to a nonexistant file
 c.sendline("echo derp >> herp2.txt")
