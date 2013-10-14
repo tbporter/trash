@@ -102,8 +102,10 @@ int esh_builtin(struct esh_pipeline* pipeline) {
             jobs.fg_job = NULL;
             if (WIFSTOPPED(status)) {
                 /* It's a background job! */
-                esh_sys_tty_save(&pipeline->saved_tty_state);
-                pipeline->bg_job = true;
+                DEBUG_PRINT(("FG job was stopped\n"));
+                job->status = STOPPED;
+                esh_sys_tty_save(&job->saved_tty_state);
+                job->bg_job = true;
             }
             /* Reclaim control of the terminal */
             if (tcsetpgrp(esh_sys_tty_getfd(), getpgrp()) == -1) {
@@ -145,7 +147,7 @@ int esh_builtin(struct esh_pipeline* pipeline) {
             /* Now the real work */
             struct list_elem* pipeline_elem = list_front(&jobs.jobs);
             for (; pipeline_elem != list_tail(&jobs.jobs); pipeline_elem = list_next(pipeline_elem)) {
-                esh_print_job_status(pipeline);
+                esh_print_job_status(list_entry(pipeline_elem, struct esh_pipeline, elem));
             }
             return 1;
             esh_signal_unblock(SIGCHLD);
