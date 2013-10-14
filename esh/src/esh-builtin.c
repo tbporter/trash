@@ -144,36 +144,7 @@ int esh_builtin(struct esh_pipeline* pipeline) {
             /* Now the real work */
             struct list_elem* pipeline_elem = list_front(&jobs.jobs);
             for (; pipeline_elem != list_tail(&jobs.jobs); pipeline_elem = list_next(pipeline_elem)) {
-                /* Print out the job information first */
-                struct esh_pipeline* pipeline = list_entry(pipeline_elem, struct esh_pipeline, elem);
-                printf("[%d]\t", pipeline->jid);
-                /* Print status */
-                if (pipeline->status == BACKGROUND) {
-                    printf("Running\t(");
-                }
-                else {
-                    printf("Stopped\t(");
-                }
-                
-                struct list_elem* command_elem = list_front(&pipeline->commands);
-                struct esh_command* command = list_entry(command_elem, struct esh_command, elem);
-
-                DEBUG_PRINT(("Printing command\n"));
-                int i;
-                printf("%s", command->argv[0]);
-                for (i = 1; command->argv[i] != NULL; i++) {
-                    printf(" %s", command->argv[i]);
-                }
-                command_elem = list_next(command_elem);
-
-                for (; command_elem != list_tail(&pipeline->commands); command_elem = list_next(command_elem)) {
-                    command = list_entry(command_elem, struct esh_command, elem);
-                    printf(" |");
-                    for (i = 0; command->argv[i] != NULL; i++) {
-                        printf(" %s", command->argv[i]);
-                    }
-                }
-                printf(")\n");
+                esh_print_job_status(pipeline);
             }
             return 1;
             esh_signal_unblock(SIGCHLD);
@@ -181,4 +152,37 @@ int esh_builtin(struct esh_pipeline* pipeline) {
 
     }
     return 0;
+}
+
+void esh_print_job_status(struct esh_pipeline* pipeline) {
+    /* Print out the job information first */
+    printf("[%d]\t", pipeline->jid);
+    /* Print status */
+    if (pipeline->status == BACKGROUND) {
+        printf("Running\t(");
+    }
+    else {
+        printf("Stopped\t(");
+    }
+    
+    struct list_elem* command_elem = list_front(&pipeline->commands);
+    struct esh_command* command = list_entry(command_elem, struct esh_command, elem);
+
+    DEBUG_PRINT(("Printing command\n"));
+    int i;
+    printf("%s", command->argv[0]);
+    for (i = 1; command->argv[i] != NULL; i++) {
+        printf(" %s", command->argv[i]);
+    }
+    command_elem = list_next(command_elem);
+
+    for (; command_elem != list_tail(&pipeline->commands); command_elem = list_next(command_elem)) {
+        command = list_entry(command_elem, struct esh_command, elem);
+        printf(" |");
+        for (i = 0; command->argv[i] != NULL; i++) {
+            printf(" %s", command->argv[i]);
+        }
+    }
+    printf(")\n");
+
 }
