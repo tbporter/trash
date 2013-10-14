@@ -182,6 +182,7 @@ int esh_command_line_run(struct esh_command_line * cline) {
         /* If background job */
         else {
             pipeline->status = BACKGROUND;
+            printf("[%d] (%d)\n", pipeline->jid, pipeline->pgrp);
             DEBUG_PRINT(("Setting up backgrounding\n"));
         }
         esh_signal_unblock(SIGCHLD);
