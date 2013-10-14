@@ -3,6 +3,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <sys/wait.h>
+#include <errno.h>
 
 #include "list.h"
 #include "esh.h"
@@ -78,12 +79,14 @@ int esh_builtin(struct esh_pipeline* pipeline) {
             esh_signal_unblock(SIGCHLD);
             /* Wait on job */
             pid_t pid;
+            pid_t pgrp = job->pgrp;
             bool running = 1;
             while (running) {
-                if ((pid = waitpid(jobs.fg_job->pgrp, &status, WUNTRACED)) == -1) {
-                    DEBUG_PRINT(("Failed on waitpid on fg job\n"));
-                    waitpid_error();
-                    return -1;
+                if ((pid = waitpid(pgrp, &status, WUNTRACED)) == -1) {
+                    if (errno == ECHILD) {
+                        /* This means the signal handler picked this up */
+                        break;
+                    }
                 }
                 else if (pid > 0 && !WIFSTOPPED(status)) {
                     /* clean up */
