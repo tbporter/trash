@@ -437,12 +437,12 @@ pid_t esh_command_exec(struct esh_command* command, pid_t pgid) {
             }
             pgid = command->pid;
             if (!command->pipeline->bg_job) {
-                /* TODO: Get this working! */
-                DEBUG_PRINT(("This should get the terminal!\n"));
-                /*if (tcsetpgrp(esh_sys_tty_getfd(), pgid) == -1) {
+                DEBUG_PRINT(("Setting terminal control group\n"));
+                if (tcsetpgrp(esh_sys_tty_getfd(), pgid) == -1) {
+                    DEBUG_PRINT(("Error on tcsetpgrp\n"));
                     tcsetpgrp_error();
                     return -1;
-                }*/
+                }
             }
         }
         else {
@@ -462,8 +462,6 @@ pid_t esh_command_exec(struct esh_command* command, pid_t pgid) {
         else {
             setpgid(0, pgid);
         }
-        /* Could probably handle EINTR also check to make sure you're not
-         * trying to dup2 itself */
         if (command->input_fd != STDIN_FILENO && dup2(command->input_fd,
                     STDIN_FILENO) == -1) {
             DEBUG_PRINT(("Error on setting input\n"));
