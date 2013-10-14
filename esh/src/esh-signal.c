@@ -46,14 +46,16 @@ void esh_signal_handler_chld(int sig, siginfo_t* info, void* _ctxt){
 	pid_t pid;
 
 	//wait on each pid to see what happened
-	while((pid = waitpid(-1,&status, WNOHANG) > 0)){
+	while((pid = waitpid(-1,&status, WNOHANG)) > 0){
 		
 		struct esh_command* cmd = esh_get_cmd_from_pid(pid);
-
-		if(jobs.fg_job != NULL && jobs.fg_job->pgrp == cmd->pipeline->pgrp){
-			esh_signal_cleanup_fg(cmd,status);		
-		} else {
-			esh_signal_cleanup(cmd,status);
+			
+		if(cmd){
+			if(jobs.fg_job != NULL && jobs.fg_job->pgrp == cmd->pipeline->pgrp){
+				esh_signal_cleanup_fg(cmd,status);		
+			} else {
+				esh_signal_cleanup(cmd,status);
+			}
 		}	
 	
 	}

@@ -29,7 +29,12 @@ struct list* esh_get_jobs() {
 
 /* Return pointer to pipeline or NULL */
 struct esh_pipeline* esh_get_job_from_jid(int jid) {
+    
+    if(list_empty(&jobs.jobs))
+        return NULL;
+
     struct list_elem* pipeline;
+
     for (pipeline = list_front(&jobs.jobs); pipeline !=
             list_tail(&jobs.jobs); pipeline = list_next(pipeline)) {
         if (list_entry(pipeline, struct esh_pipeline, elem)->jid == jid) {
@@ -41,6 +46,10 @@ struct esh_pipeline* esh_get_job_from_jid(int jid) {
 
 /* Return pointer to pipeline or NULL */
 struct esh_pipeline* esh_get_job_from_pgrp(pid_t pgrp) {
+    
+    if(list_empty(&jobs.jobs))
+        return NULL;
+
     struct list_elem* pipeline;
     for (pipeline = list_front(&jobs.jobs); pipeline !=
             list_tail(&jobs.jobs); pipeline = list_next(pipeline)) {
@@ -53,6 +62,10 @@ struct esh_pipeline* esh_get_job_from_pgrp(pid_t pgrp) {
 
 /* Return pointer to pipeline or NULL */
 struct esh_command* esh_get_cmd_from_pid(pid_t pid) {
+    
+    if(list_empty(&jobs.jobs))
+        return NULL;
+    
     struct list_elem* pipeline_elem;
     int count = 0;
     DEBUG_PRINT(("List size %d of %d\n", list_size(&jobs.jobs), pid));
@@ -66,7 +79,7 @@ struct esh_command* esh_get_cmd_from_pid(pid_t pid) {
                 list_tail(&pipeline->commands); command_elem = list_next(command_elem)) {
             struct esh_command* command = list_entry(command_elem, struct esh_command, elem);
             count2++;
-
+            DEBUG_PRINT(("command->pid = %d\n",command->pid));
             if (command->pid == pid) {
                 DEBUG_PRINT(("Found pid of command %d\n", pid));
                 return command;
