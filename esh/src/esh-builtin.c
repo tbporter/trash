@@ -117,7 +117,7 @@ int esh_builtin(struct esh_pipeline* pipeline) {
             return 1;
         }
         else if (!strcmp("kill", command->argv[0])) {
-            DEBUG_PRINT(("Executing kill to %s\n", command->argv[1]));
+            DEBUG_PRINT(("Executing kill to %s\n", atoi(command->argv[1])));
             /* TODO: handle empty list */
             /* Protect the list while we access the job list */
             esh_signal_block(SIGCHLD);
@@ -151,6 +151,24 @@ int esh_builtin(struct esh_pipeline* pipeline) {
             }
             return 1;
             esh_signal_unblock(SIGCHLD);
+        }
+        else if (!strcmp("stop", command->argv[0])) {
+            DEBUG_PRINT(("Executing stop on %d\n", atoi(command->argv[1])));
+            struct esh_pipeline* job = esh_get_job_from_jid(atoi(command->argv[1]));
+            if (job == NULL) {
+                errprintf("Invalid job number %s", command->argv[1]);
+                return -1;
+            }
+            if (kill(-1*job->pgrp, SIGCONT) == -1) {
+                kill_error();
+                return -1;
+            }
+            job->status = STOPPED;
+            /* Print status */
+            esh_print_job_status(job);
+            /* Unblock here */
+            esh_signal_unblock(SIGCHLD);
+            return 1;
         }
 
     }
