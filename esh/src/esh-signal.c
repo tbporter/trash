@@ -51,11 +51,12 @@ void esh_signal_handler_chld(int sig, siginfo_t* info, void* _ctxt){
 		struct esh_command* cmd = esh_get_cmd_from_pid(pid);
 			
 		if(cmd){
-			if(jobs.fg_job != NULL && jobs.fg_job->pgrp == cmd->pipeline->pgrp){
+			/*if(jobs.fg_job != NULL && jobs.fg_job->pgrp == cmd->pipeline->pgrp){
 				esh_signal_cleanup_fg(cmd,status);		
 			} else {
 				esh_signal_cleanup(cmd,status);
-			}
+			}*/
+			esh_signal_cleanup(cmd,status);;
 		}	
 	
 	}
@@ -63,11 +64,11 @@ void esh_signal_handler_chld(int sig, siginfo_t* info, void* _ctxt){
 
 bool esh_signal_cleanup_fg(struct esh_command* cmd, int status){
 	assert(jobs.fg_job != NULL);
-	
+	/*
 	if(WIFEXITED(status) || WIFSTOPPED(status)){
 		//tcsetpgrp(esh_sys_tty_getfd(),getpgrp());
 		jobs.fg_job = NULL;
-	}
+	}*/
 	
 	return esh_signal_cleanup(cmd,status);
 	/*bool pipecleaned = esh_signal_cleanup(cmd,status);
@@ -102,6 +103,9 @@ bool esh_signal_cleanup(struct esh_command* cmd, int status){
 
 	if(esh_signal_check_pipeline_isempty(cmd->pipeline)){
 		//lets pop
+		if(jobs.fg_job != NULL && jobs.fg_job->pgrp == cmd->pipeline->pgrp){
+			jobs.fg_job = NULL;
+		}
 		list_remove(&(cmd->pipeline->elem));
 		esh_pipeline_free(cmd->pipeline);
 		return 1;
