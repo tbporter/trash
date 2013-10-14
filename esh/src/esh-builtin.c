@@ -68,6 +68,7 @@ int esh_builtin(struct esh_pipeline* pipeline) {
             /* Book keeping */
             job->status = FOREGROUND;
             jobs.fg_job = job;
+            esh_print_job_status(job);
             DEBUG_PRINT(("Foregrounding %d\n", job->jid));
             if (kill(-1*job->pgrp, SIGCONT) == -1) {
                 kill_error();
@@ -101,8 +102,10 @@ int esh_builtin(struct esh_pipeline* pipeline) {
             jobs.fg_job = NULL;
             if (WIFSTOPPED(status)) {
                 /* It's a background job! */
-                esh_sys_tty_save(&pipeline->saved_tty_state);
-                pipeline->bg_job = true;
+                DEBUG_PRINT(("FG job was stopped\n"));
+                job->status = STOPPED;
+                esh_sys_tty_save(&job->saved_tty_state);
+                job->bg_job = true;
             }
             /* Reclaim control of the terminal */
             if (tcsetpgrp(esh_sys_tty_getfd(), getpgrp()) == -1) {
@@ -114,7 +117,7 @@ int esh_builtin(struct esh_pipeline* pipeline) {
             return 1;
         }
         else if (!strcmp("kill", command->argv[0])) {
-            DEBUG_PRINT(("Executing kill to %s\n", command->argv[1]));
+            DEBUG_PRINT(("Executing kill to %s\n", atoi(command->argv[1])));
             /* TODO: handle empty list */
             /* Protect the list while we access the job list */
             esh_signal_block(SIGCHLD);
@@ -144,41 +147,63 @@ int esh_builtin(struct esh_pipeline* pipeline) {
             /* Now the real work */
             struct list_elem* pipeline_elem = list_front(&jobs.jobs);
             for (; pipeline_elem != list_tail(&jobs.jobs); pipeline_elem = list_next(pipeline_elem)) {
-                /* Print out the job information first */
-                struct esh_pipeline* pipeline = list_entry(pipeline_elem, struct esh_pipeline, elem);
-                printf("[%d]\t", pipeline->jid);
-                /* Print status */
-                if (pipeline->status == BACKGROUND) {
-                    printf("Running\t(");
-                }
-                else {
-                    printf("Stopped\t(");
-                }
-                
-                struct list_elem* command_elem = list_front(&pipeline->commands);
-                struct esh_command* command = list_entry(command_elem, struct esh_command, elem);
-
-                DEBUG_PRINT(("Printing command\n"));
-                int i;
-                printf("%s", command->argv[0]);
-                for (i = 1; command->argv[i] != NULL; i++) {
-                    printf(" %s", command->argv[i]);
-                }
-                command_elem = list_next(command_elem);
-
-                for (; command_elem != list_tail(&pipeline->commands); command_elem = list_next(command_elem)) {
-                    command = list_entry(command_elem, struct esh_command, elem);
-                    printf(" |");
-                    for (i = 0; command->argv[i] != NULL; i++) {
-                        printf(" %s", command->argv[i]);
-                    }
-                }
-                printf(")\n");
+                esh_print_job_status(list_entry(pipeline_elem, struct esh_pipeline, elem));
             }
             return 1;
             esh_signal_unblock(SIGCHLD);
         }
+        else if (!strcmp("stop", command->argv[0])) {
+            DEBUG_PRINT(("Executing stop on %d\n", atoi(command->argv[1])));
+            struct esh_pipeline* job = esh_get_job_from_jid(atoi(command->argv[1]));
+            if (job == NULL) {
+                errprintf("Invalid job number %s", command->argv[1]);
+                return -1;
+            }
+            if (kill(-1*job->pgrp, SIGTSTP) == -1) {
+                kill_error();
+                return -1;
+            }
+            job->status = STOPPED;
+            /* Print status */
+            esh_print_job_status(job);
+            /* Unblock here */
+            esh_signal_unblock(SIGCHLD);
+            return 1;
+        }
 
     }
     return 0;
+}
+
+void esh_print_job_status(struct esh_pipeline* pipeline) {
+    /* Print out the job information first */
+    printf("[%d]\t", pipeline->jid);
+    /* Print status */
+    if (pipeline->status == BACKGROUND || pipeline->status == FOREGROUND) {
+        printf("Running\t(");
+    }
+    else {
+        printf("Stopped\t(");
+    }
+    
+    struct list_elem* command_elem = list_front(&pipeline->commands);
+    struct esh_command* command = list_entry(command_elem, struct esh_command, elem);
+
+    DEBUG_PRINT(("Printing command\n"));
+    int i;
+    printf("%s", command->argv[0]);
+    for (i = 1; command->argv[i] != NULL; i++) {
+        printf(" %s", command->argv[i]);
+    }
+    command_elem = list_next(command_elem);
+
+    for (; command_elem != list_tail(&pipeline->commands); command_elem = list_next(command_elem)) {
+        command = list_entry(command_elem, struct esh_command, elem);
+        printf(" |");
+        for (i = 0; command->argv[i] != NULL; i++) {
+            printf(" %s", command->argv[i]);
+        }
+    }
+    printf(")\n");
+
 }

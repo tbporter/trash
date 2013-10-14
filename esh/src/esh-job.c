@@ -182,6 +182,8 @@ int esh_command_line_run(struct esh_command_line * cline) {
             jobs.fg_job = NULL;
             if (WIFSTOPPED(status)) {
                 /* It's a background job! */
+                pipeline->status = STOPPED;
+                esh_print_job_status(pipeline);
                 esh_sys_tty_save(&pipeline->saved_tty_state);
                 pipeline->bg_job = true;
             }
