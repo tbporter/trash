@@ -22,6 +22,8 @@ if hasattr(def_module, 'logfile'):
 c = pexpect.spawn(def_module.shell, drainpty=True, logfile=logfile)
 atexit.register(force_shell_termination, shell_process=c)
 
+c.timeout = 5
+
 #echo | grep | grep
 #2nd grep will return 'much pipe', and not 'much wow', because of the first grep
 c.sendline("echo -e \"wow\nso pipe\nvery echo\nmuch pipe\nwow\nmuch wow\" | grep pipe | grep much")

@@ -20,8 +20,9 @@ if hasattr(def_module, 'logfile'):
 
 #spawn an instance of the shell
 c = pexpect.spawn(def_module.shell, drainpty=True, logfile=logfile)
-
 atexit.register(force_shell_termination, shell_process=c)
+
+c.timeout = 5
 
 #backgrounding a exclusive access job will be stopped
 c.sendline("vim &")
