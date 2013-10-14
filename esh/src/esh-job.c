@@ -153,8 +153,10 @@ int esh_command_line_run(struct esh_command_line * cline) {
                 }
                 else if (pid > 0 && !WIFSTOPPED(status)) {
                     /* clean up */
+                    esh_signal_block(SIGCHLD);
                     struct esh_command* cmd = esh_get_cmd_from_pid(pid);
                     running = !esh_signal_cleanup_fg(cmd, status);
+                    esh_signal_unblock(SIGCHLD);
                 }
                 else {
                     break;
@@ -165,16 +167,16 @@ int esh_command_line_run(struct esh_command_line * cline) {
             DEBUG_PRINT(("Finished waiting, return of %d\n", pid));
             /* Clear the foreground job */
             jobs.fg_job = NULL;
+            if (WIFSTOPPED(status)) {
+                /* It's a background job! */
+                esh_sys_tty_save(&pipeline->saved_tty_state);
+                pipeline->bg_job = true;
+            }
             /* Reclaim control of the terminal */
             if (tcsetpgrp(esh_sys_tty_getfd(), getpgrp()) == -1) {
                 DEBUG_PRINT(("Error on tcsetpgrp\n"));
                 tcsetpgrp_error();
                 return -1;
-            }
-            if (WIFSTOPPED(status)) {
-                /* It's a background job! */
-                esh_sys_tty_save(&pipeline->saved_tty_state);
-                pipeline->bg_job = true;
             }
             esh_sys_tty_restore(tty_state);
             DEBUG_PRINT(("Reclaimed terminal\n"));
@@ -182,6 +184,7 @@ int esh_command_line_run(struct esh_command_line * cline) {
         /* If background job */
         else {
             pipeline->status = BACKGROUND;
+            esh_sys_tty_save(&pipeline->saved_tty_state);
             printf("[%d] %d\n", pipeline->jid, pipeline->pgrp);
             DEBUG_PRINT(("Setting up backgrounding\n"));
         }
