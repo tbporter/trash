@@ -23,7 +23,12 @@ c = pexpect.spawn(def_module.shell, drainpty=True, logfile=logfile)
 
 atexit.register(force_shell_termination, shell_process=c)
 
-assert 1 == 0, "Unimplemented functionality"
+#backgrounding a exclusive access job will be stopped
+c.sendline("vim &")
+(jobid, status_message, command_line) = shellio.parse_regular_expression(c, def_module.job_status_regex)
+assert status_message == def_module.jobs_status_msg['stopped'] and \
+		'vim' in command_line, "Vim did not stop when backgrounded"
 
-
+#c.sendline("fg 1")
+#c.sendline()
 shellio.success()

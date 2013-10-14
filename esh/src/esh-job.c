@@ -229,7 +229,13 @@ int esh_pipeline_init(struct esh_pipeline * pipeline) {
     /* Execute if not NULL */
     if (pipeline->iored_input) {
         /* Do we need to free the file pointer here? */
-        int input_fd = fileno(fopen(pipeline->iored_input, "r"));
+        FILE* file = fopen(pipeline->iored_input, "r");
+        if(file == NULL){
+            perror("fopen error");
+            return -1;
+        }
+
+        int input_fd = fileno(file);
         DEBUG_PRINT(("Setting input to be %s\n", pipeline->iored_input));
         if (input_fd == -1) {
             DEBUG_PRINT(("Error opening input file %s\n", pipeline->iored_input));

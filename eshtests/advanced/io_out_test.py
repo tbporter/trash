@@ -22,8 +22,9 @@ if hasattr(def_module, 'logfile'):
 c = pexpect.spawn(def_module.shell, drainpty=True, logfile=logfile)
 atexit.register(force_shell_termination, shell_process=c)
 
-
-assert 1 == 0, "Unimplemented functionality"
-
+#create a file herp.txt with 'derp' in it
+c.sendline("echo derp > herp.txt")
+c.sendline("cat herp.txt")
+assert c.expect_exact("derp") == 0, "file didn't recieve out correctly"
 
 shellio.success()
