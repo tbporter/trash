@@ -6,7 +6,8 @@
  * Developed by Godmar Back for CS 3214 Fall 2009
  * Virginia Tech.
  */
-
+#ifndef _ESH_SYS_UTILS_H
+#define _ESH_SYS_UTILS_H
 #include <stdbool.h>
 #include <signal.h>
 
@@ -47,3 +48,4 @@ typedef void (*sa_sigaction_t)(int, siginfo_t *, void *);
 
 /* Install signal handler for signal 'sig' */
 void esh_signal_sethandler(int sig, sa_sigaction_t handler);
+#endif
