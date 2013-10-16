@@ -12,6 +12,7 @@
 
 struct esh_jobs jobs;
 
+//Initialize all the signal handlers
 void esh_signal_init(){
 	signal(SIGTSTP,esh_signal_handler_stop);
 	signal(SIGINT,esh_signal_handler_int);
@@ -19,11 +20,13 @@ void esh_signal_init(){
 	esh_signal_block(SIGTTIN);
 	esh_signal_block(SIGTTOU);
 }
+
+//Ctrl-c
 void esh_signal_handler_int(int sig){
 	assert (sig == SIGINT);
 	esh_signal_fg(sig);
 }
-
+//ctrl-z
 void esh_signal_handler_stop(int sig){
 	assert (sig == SIGTSTP);
 	esh_signal_fg(sig);
@@ -38,54 +41,36 @@ void esh_signal_fg(int sig){
 	}
 }
 
+
 void esh_signal_handler_chld(int sig, siginfo_t* info, void* _ctxt){
 	assert (sig == SIGCHLD);
 
-	//char buf[128];
 	int status;
 	pid_t pid;
 
 	//wait on each pid to see what happened
-	while((pid = waitpid(-1,&status, WNOHANG)) > 0){
+	while((pid = waitpid(-1,&status, WUNTRACED | WNOHANG)) > 0){
 		
+		//finds the cmd based on the pid
 		struct esh_command* cmd = esh_get_cmd_from_pid(pid);
 			
 		if(cmd){
-			/*if(jobs.fg_job != NULL && jobs.fg_job->pgrp == cmd->pipeline->pgrp){
-				esh_signal_cleanup_fg(cmd,status);		
-			} else {
-				esh_signal_cleanup(cmd,status);
-			}*/
 			esh_signal_cleanup(cmd,status);;
 		}	
 	
 	}
 }
 
-bool esh_signal_cleanup_fg(struct esh_command* cmd, int status){
-	assert(jobs.fg_job != NULL);
-	/*
-	if(WIFEXITED(status) || WIFSTOPPED(status)){
-		//tcsetpgrp(esh_sys_tty_getfd(),getpgrp());
-		jobs.fg_job = NULL;
-	}*/
-	
-	return esh_signal_cleanup(cmd,status);
-	/*bool pipecleaned = esh_signal_cleanup(cmd,status);
-	
-	if(pipecleaned)
-		jobs.fg_job = NULL
-	
-	return 1;*/
-}
 
+//will change the status of a esh_command and kill the pipe if it needs to 
 bool esh_signal_cleanup(struct esh_command* cmd, int status){
 
 	
-	//It ended
+	//It ended! set the pid to 0, so the pipe cleaner knows what to do
 	if(WIFSIGNALED(status) || WIFEXITED(status)){
 		cmd->pid = 0;
 	} 
+	//It stopped
 	else if(WIFSTOPPED(status)){
 
 		cmd->pipeline->status = STOPPED;
@@ -96,16 +81,22 @@ bool esh_signal_cleanup(struct esh_command* cmd, int status){
 			cmd->pipeline->status = NEEDSTERMINAL;
 		}
 	}
+	//It continued, lets set it to background
 	else if(WIFCONTINUED(status)){
+		if(jobs.fg_job != NULL && jobs.fg_job->pgrp != cmd->pipeline->pgrp){
+			cmd->pipeline->status = BACKGROUND;
+		}
 	} 
 	else{
 	}
 
+	//If all the pipe's cmds are dead, kill the pipe
 	if(esh_signal_check_pipeline_isempty(cmd->pipeline)){
-		//lets pop
+		
 		if(jobs.fg_job != NULL && jobs.fg_job->pgrp == cmd->pipeline->pgrp){
 			jobs.fg_job = NULL;
 		}
+		//lets "pop pop"
 		list_remove(&(cmd->pipeline->elem));
 		esh_pipeline_free(cmd->pipeline);
 		return 1;
@@ -127,6 +118,4 @@ bool esh_signal_check_pipeline_isempty(struct esh_pipeline* pipeline){
 void esh_signal_kill_pgrp(pid_t pgrp, int sig){
 	DEBUG_PRINT(("Killing pgrp: %d with signal: %d\n", pgrp, sig));
 	kill(-1*pgrp,sig);
-	//sigint
-	//sigcont
 }

@@ -171,7 +171,7 @@ int esh_command_line_run(struct esh_command_line * cline) {
                     /* clean up */
                     esh_signal_block(SIGCHLD);
                     struct esh_command* cmd = esh_get_cmd_from_pid(pid);
-                    running = !esh_signal_cleanup_fg(cmd, status);
+                    running = !esh_signal_cleanup(cmd, status);
                     pid = 0;
                     esh_signal_unblock(SIGCHLD);
                 }

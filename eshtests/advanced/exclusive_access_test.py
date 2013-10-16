@@ -26,10 +26,12 @@ c.timeout = 5
 
 #backgrounding a exclusive access job will be stopped
 c.sendline("vim &")
-(jobid, status_message, command_line) = shellio.parse_regular_expression(c, def_module.job_status_regex)
-assert status_message == def_module.jobs_status_msg['stopped'] and \
-		'vim' in command_line, "Vim did not stop when backgrounded"
+[job, pid] = shellio.parse_regular_expression(c,def_module.bgjob_regex)
+assert not proc_check.check_pid_fgpgrp(pid), "process is in the forground"
 
-#c.sendline("fg 1")
-#c.sendline()
+c.sendline("fg 1")
+c.sendline("iderp"+chr(27)+":w derpderp")
+c.sendline("cat derpderp")
+assert c.expect_exact("derp") == 0, "typing to vim didn't work"
+
 shellio.success()
